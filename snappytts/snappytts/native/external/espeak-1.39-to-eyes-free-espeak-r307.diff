@@ -1,0 +1,139 @@
+diff --exclude=.svn -urN espeak-1.39-source/Android.mk native/external/espeak/Android.mk
+--- espeak-1.39-source/Android.mk	1969-12-31 19:00:00.000000000 -0500
++++ native/external/espeak/Android.mk	2009-05-04 16:30:53.000000000 -0400
+@@ -0,0 +1,40 @@
++# Copyright 2008 Google Inc. All Rights Reserved.
++#
++# Android.mk for espeak
++#
++
++LOCAL_PATH:= $(call my-dir)
++include $(CLEAR_VARS)
++
++LOCAL_SRC_FILES:= \
++	src/debug.cpp \
++	src/compiledict.cpp \
++	src/dictionary.cpp \
++	src/event.cpp \
++	src/fifo.cpp \
++	src/intonation.cpp\
++	src/numbers.cpp \
++	src/phonemelist.cpp \
++	src/setlengths.cpp \
++	src/speak_lib.cpp \
++	src/synth_mbrola.cpp \
++	src/synthesize.cpp \
++	src/tr_english.cpp \
++	src/translate.cpp \
++	src/voices.cpp \
++	src/wavegen.cpp \
++	src/espeak_command.cpp \
++	src/readclause.cpp \
++	src/synthdata.cpp \
++	src/tr_languages.cpp \
++	src/wave.cpp
++
++LOCAL_PRELINK_MODULE:= false
++
++LOCAL_MODULE:= libespeak
++
++LOCAL_CFLAGS+= $(TOOL_CFLAGS) -DDEBUG_ENABLED=1 # -Dwchar_t=owchar_t
++
++LOCAL_LDFLAGS:= $(TOOL_LDFLAGS) -lstdc++ -lc
++
++include $(BUILD_STATIC_LIBRARY)
+diff --exclude=.svn -urN espeak-1.39-source/src/dictionary.cpp native/external/espeak/src/dictionary.cpp
+--- espeak-1.39-source/src/dictionary.cpp	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/dictionary.cpp	2009-05-04 16:30:53.000000000 -0400
+@@ -27,7 +27,7 @@
+ #include <string.h>
+ 
+ #include <wctype.h>
+-#include <wchar.h>
++////#include <wchar.h>
+ 
+ #include "speak_lib.h"
+ #include "speech.h"
+diff --exclude=.svn -urN espeak-1.39-source/src/espeak_command.cpp native/external/espeak/src/espeak_command.cpp
+--- espeak-1.39-source/src/espeak_command.cpp	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/espeak_command.cpp	2009-05-04 16:30:52.000000000 -0400
+@@ -25,7 +25,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <assert.h>
+-#include <wchar.h>
++////#include <wchar.h>
+ 
+ #include "debug.h"
+ 
+diff --exclude=.svn -urN espeak-1.39-source/src/fifo.cpp native/external/espeak/src/fifo.cpp
+--- espeak-1.39-source/src/fifo.cpp	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/fifo.cpp	2009-05-04 16:30:52.000000000 -0400
+@@ -30,7 +30,7 @@
+ #include <stdlib.h>
+ #include <pthread.h>
+ #include <semaphore.h>
+-#include <wchar.h>
++////#include <wchar.h>
+ #include <errno.h>
+ #include <sys/time.h>
+ #include <time.h>
+diff --exclude=.svn -urN espeak-1.39-source/src/numbers.cpp native/external/espeak/src/numbers.cpp
+--- espeak-1.39-source/src/numbers.cpp	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/numbers.cpp	2009-05-04 16:30:52.000000000 -0400
+@@ -25,7 +25,7 @@
+ #include <string.h>
+ 
+ #include <wctype.h>
+-#include <wchar.h>
++////#include <wchar.h>
+ 
+ #include "speak_lib.h"
+ #include "speech.h"
+diff --exclude=.svn -urN espeak-1.39-source/src/readclause.cpp native/external/espeak/src/readclause.cpp
+--- espeak-1.39-source/src/readclause.cpp	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/readclause.cpp	2009-05-04 16:30:52.000000000 -0400
+@@ -24,7 +24,7 @@
+ #include <stdlib.h>
+ #include <string.h>
+ #include <wctype.h>
+-#include <wchar.h>
++////#include <wchar.h>
+ #include <math.h>
+ 
+ #include "speak_lib.h"
+diff --exclude=.svn -urN espeak-1.39-source/src/speak_lib.cpp native/external/espeak/src/speak_lib.cpp
+--- espeak-1.39-source/src/speak_lib.cpp	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/speak_lib.cpp	2009-05-04 16:30:53.000000000 -0400
+@@ -23,7 +23,7 @@
+ #include "ctype.h"
+ #include "string.h"
+ #include "stdlib.h"
+-#include "wchar.h"
++////#include "wchar.h"
+ #include "locale.h"
+ #include <assert.h>
+ #include <time.h>
+diff --exclude=.svn -urN espeak-1.39-source/src/speak_lib.h native/external/espeak/src/speak_lib.h
+--- espeak-1.39-source/src/speak_lib.h	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/speak_lib.h	2009-05-04 16:30:52.000000000 -0400
+@@ -26,6 +26,7 @@
+ /*************************************************************/
+ 
+ #include <stdio.h>
++#include <wctype.h>
+ 
+ #define ESPEAK_API_REVISION  3
+ /*
+diff --exclude=.svn -urN espeak-1.39-source/src/translate.cpp native/external/espeak/src/translate.cpp
+--- espeak-1.39-source/src/translate.cpp	2008-09-08 16:05:33.000000000 -0400
++++ native/external/espeak/src/translate.cpp	2009-05-04 16:30:53.000000000 -0400
+@@ -25,7 +25,7 @@
+ #include <string.h>
+ 
+ #include <wctype.h>
+-#include <wchar.h>
++////#include <wchar.h>
+ 
+ #include "speak_lib.h"
+ #include "speech.h"

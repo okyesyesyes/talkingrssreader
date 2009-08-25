@@ -1,0 +1,11 @@
+This directory contains the espeak sources and modifications.
+
+espeak-1.39-source.zip : original espeak 1.39 source
+    (http://espeak.sourceforge.net/)
+
+espeak-1.39-to-eyes-free-espeak-r307.diff : modifications made in the
+    original Eyes-free TTS.
+
+external-espeak-diff-r307.diff : My own modifications on top of that.
+    Basically just not using pthread_cancel, which BIONIC (Android's C
+    library) does not provide.

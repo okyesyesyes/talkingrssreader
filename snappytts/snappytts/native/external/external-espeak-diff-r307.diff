@@ -1,0 +1,49 @@
+Index: external/espeak/Android.mk
+===================================================================
+--- external/espeak/Android.mk	(revision 308)
++++ external/espeak/Android.mk	(working copy)
+@@ -33,7 +33,7 @@
+ 
+ LOCAL_MODULE:= libespeak
+ 
+-LOCAL_CFLAGS+= $(TOOL_CFLAGS) -DDEBUG_ENABLED=1 # -Dwchar_t=owchar_t
++LOCAL_CFLAGS+= $(TOOL_CFLAGS) -DDEBUG_ENABLED=1 -DLIBRARY # -Dwchar_t=owchar_t
+ 
+ LOCAL_LDFLAGS:= $(TOOL_LDFLAGS) -lstdc++ -lc
+ 
+Index: external/espeak/src/event.cpp
+===================================================================
+--- external/espeak/src/event.cpp	(revision 308)
++++ external/espeak/src/event.cpp	(working copy)
+@@ -710,7 +710,7 @@
+ 	
+ 	if (my_thread)
+ 	{
+-		pthread_cancel(my_thread);
++		//pthread_cancel(my_thread);
+ 		pthread_join(my_thread,NULL);
+ 		pthread_mutex_destroy(&my_mutex);
+ 		sem_destroy(&my_sem_start_is_required);
+@@ -722,4 +722,3 @@
+ 
+ #endif
+ //>
+-
+Index: external/espeak/src/fifo.cpp
+===================================================================
+--- external/espeak/src/fifo.cpp	(revision 308)
++++ external/espeak/src/fifo.cpp	(working copy)
+@@ -579,7 +579,7 @@
+ {
+   ENTER("fifo_terminate");
+ 
+-  pthread_cancel(my_thread);
++  //pthread_cancel(my_thread);
+   pthread_join(my_thread,NULL);
+   pthread_mutex_destroy(&my_mutex);
+   sem_destroy(&my_sem_start_is_required);
+@@ -590,4 +590,3 @@
+ 
+ #endif
+ //>
+-
