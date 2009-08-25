@@ -52,7 +52,7 @@ static void setLanguage(const char* language)
     voice.variant = 0;
     char espeakLangStr[6];
     if ((strlen(language) != 2) && (strlen(language) != 6)){
-        LOGI("Error: Invalid language. Language must be in either xx or xx-rYY format.");
+      LOGI("Error: Invalid language '%s. Language must be in either xx or xx-rYY format.", language);
         return;
     }
     if (strcmp(language, "en-rUS") == 0){
@@ -113,7 +113,7 @@ static void setLanguage(const char* language)
     }
     voice.languages = espeakLangStr;
     espeak_ERROR err = espeak_SetVoiceByProperties(&voice);
-    currentLanguage = new char [strlen(language)];
+    currentLanguage = new char [strlen(language) +1];
     strcpy(currentLanguage, language);
 }
 
@@ -125,13 +125,51 @@ static void setSpeechRate(int speechRate)
 
 /* Functions exposed to the TTS API */
 
+static unsigned int unique_identifier;
+static volatile bool isStopping;
+
 /* Callback from espeak.  Should call back to the TTS API */
 static int eSpeakCallback(short *wav, int numsamples,
 				      espeak_EVENT *events) {    
-    LOGI("eSpeak callback received!");
+    //LOGI("eSpeak callback received!");
+    //LOGI("eSpeak callback event for id %d", events->unique_identifier);
+    if (events->unique_identifier != unique_identifier) {
+      // Extra checking to catch threading issues. This would only
+      // happen if we enqueued multiple utterances back to back through
+      // espeak_Synth(), which we don't currently do.
+      LOGE("eSpeak callback: xqxq wrong utterance, event for %d current is %d", events->unique_identifier, unique_identifier);
+    }
+    bool isTerminated = false;
+    while(events->type != espeakEVENT_LIST_TERMINATED) {
+      if (events->type == espeakEVENT_MSG_TERMINATED)
+        isTerminated = true;
+      ++events;
+    }
+    if (wav == NULL && !isTerminated) {
+      // There are sometimes two callback calls with NULL wav at the end
+      // of an utterance. Call ttsSynthDoneCB only for the one with the
+      // actual termination.
+      return 0;
+    }
+
+    if (isStopping) {
+      // stop() was called, so short cut out.
+      return 1;  // Tell espeak to stop.
+    }
     size_t bufferSize = numsamples * sizeof(short);
-    ttsSynthDoneCBPointer(events->user_data, 22050, AudioSystem::PCM_16_BIT, 1, (int8_t *)wav, bufferSize);
-    LOGI("eSpeak callback processed!");
+    bool stopping = ttsSynthDoneCBPointer(events->user_data, 22050, AudioSystem::PCM_16_BIT, 1, (int8_t *)wav, bufferSize);
+    if (stopping) {
+      // Callback says to stop. stop() has or will soon be
+      // called. This is mostly an optimization to cycle as quickly as
+      // possible, because I'm under the impression that
+      // espeak_Cancel() isn't as fast as it could be. The stop
+      // command is likely to come while ttsSynthDone is waiting on
+      // the condition, and this way we make sure not to start another
+      // round of synthesizing.
+      LOGI("eSpeak callback: speech cb returns stopping");
+      return 1;
+    }
+    //LOGI("eSpeak callback processed!");
     return 0;  // continue synthesis (1 is to abort)
 }
 
@@ -141,11 +179,11 @@ tts_result TtsSynthInterface::init(synthDoneCB_t* synthDoneCBPtr)
 {
     // TODO Make sure that the speech data is loaded in 
     // the directory /sdcard/espeak-data before calling this.
-    int sampleRate = espeak_Initialize(AUDIO_OUTPUT_SYNCHRONOUS,
-                                       4096, "/sdcard", 0);
+    int sampleRate = espeak_Initialize(AUDIO_OUTPUT_RETRIEVAL,
+                                       300, "/sdcard", 0);
 
     if (sampleRate <= 0) {
-        LOGI("eSpeak initialization failed!");
+        LOGE("eSpeak initialization failed!");
         return TTS_FAILURE;
     }
     espeak_SetSynthCallback(eSpeakCallback);
@@ -166,30 +204,46 @@ tts_result TtsSynthInterface::init(synthDoneCB_t* synthDoneCBPtr)
 
 
 // Synthesizes the text. When synthesis completes, the engine should use a callback to notify the TTS API.
-tts_result TtsSynthInterface::synth(const char *text, void *userdata)
+tts_result TtsSynthInterface::synth(const char *text, bool useSsml, bool sync,
+                                    void *userdata)
 {
-    espeak_SetSynthCallback(eSpeakCallback);
-
-    unsigned int unique_identifier;
     espeak_ERROR err;
 
+    //LOGI("Calling espeak_Synth(): '%s' useSsml %s", text, useSsml ? "true" : "false");
+
+    // ssml not yet working.
+
+    // The +1 on the string length is for the null char, otherwise
+    // it'll speak garbage text.
+
     err = espeak_Synth(text,
-                       strlen(text),
+                       strlen(text)+1,
                        0,  // position
                        POS_CHARACTER,
                        0,  // end position (0 means no end position)
-                       espeakCHARS_UTF8,
+                       espeakCHARS_UTF8
+                       | (useSsml ? espeakSSML : 0),
                        &unique_identifier,
                        userdata);
+    //LOGI("espeak_Synth() unique_identifier %d", unique_identifier);
 
-    err = espeak_Synchronize();
+    if (err != EE_OK) {
+      LOGE("espeak_Synth() returns %d", err);
+    } else {
+      if (sync) {  // only for synthesizing to file...
+        err = espeak_Synchronize();
+        if (err != EE_OK)
+          LOGE("espeak_Synchronize(() returns %d", err);
+      }
+    }
+    
     return TTS_SUCCESS;
 }
 
 // Synthesizes IPA text
 tts_result TtsSynthInterface::synthIPA(const char *text, void *userdata)
 {
-    LOGI("Synth IPA not supported.");
+    LOGE("Synth IPA not supported.");
     return TTS_FEATURE_UNSUPPORTED;
 }
 
@@ -197,7 +251,11 @@ tts_result TtsSynthInterface::synthIPA(const char *text, void *userdata)
 // Interrupts synthesis
 tts_result TtsSynthInterface::stop()
 {
-    espeak_Cancel();
+    isStopping = true;
+    LOGI("calling espeak_Cancel()");
+    if(espeak_Cancel() != EE_OK)
+      LOGI("espeak_Cancel() error");
+    isStopping = false;
     return TTS_SUCCESS;
 }
 
@@ -211,7 +269,7 @@ tts_result TtsSynthInterface::set(const char *property, const char *value)
         setLanguage(value);
     } else if (strcmp(property, "rate") == 0){
         setSpeechRate(atoi(value));
-        currentRate = new char [strlen(value)];
+        currentRate = new char [strlen(value) +1];
         strcpy(currentRate, value);
     } else {
         LOGI("Unknown property!");
@@ -241,6 +299,13 @@ tts_result TtsSynthInterface::get(const char *property, char *value)
 // Shutsdown the TTS engine
 tts_result TtsSynthInterface::shutdown()
 {
+    // This will actually hang and cause an ANR, because of the
+    // commented out pthread_cancel() calls in espeak (used to break
+    // some semaphore waits). If we just skip this call, then some
+    // threads are left behind and for some reason, Android won't
+    // cleanup the process. We don't really need this cleanup sequence
+    // for anything though, so we cheet and to be safe, just have the
+    // above layer exit() instead of calling here.
     espeak_Terminate();
     return TTS_SUCCESS;
 }

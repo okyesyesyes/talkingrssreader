@@ -1,5 +1,7 @@
 package com.google.tts;
 
+import com.google.snappytts.R;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;

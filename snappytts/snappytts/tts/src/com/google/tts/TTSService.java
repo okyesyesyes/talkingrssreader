@@ -15,6 +15,8 @@
  */
 package com.google.tts;
 
+import com.google.snappytts.R;
+
 import com.google.tts.ITTS.Stub;
 
 import android.app.Service;
@@ -34,6 +36,9 @@ import android.os.RemoteException;
 import android.preference.PreferenceManager;
 import android.util.Log;
 import android.util.TypedValue;
+import android.os.Handler;
+import android.os.Message;
+import android.os.Bundle;
 
 import java.io.File;
 import java.io.IOException;
@@ -42,6 +47,9 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Enumeration;
 import java.util.HashMap;
+import java.util.Map;
+import java.util.List;
+import java.util.Collections;
 import java.util.Properties;
 import java.util.concurrent.locks.ReentrantLock;
 
@@ -58,6 +66,10 @@ public class TTSService extends Service implements OnCompletionListener {
 		public String text;
 		public ArrayList<String> params;
 		public boolean isEarcon;
+    public ITTSUserCallback callback;  // user callback to call.
+    public int callbackUserArg;  // argument to callback method.
+
+    // For simplicity, there is either speech or a callback, not both.
 
 		public SpeechItem(String text, ArrayList<String> params,
 				boolean isEarcon) {
@@ -65,21 +77,26 @@ public class TTSService extends Service implements OnCompletionListener {
 			this.params = params;
 			this.isEarcon = isEarcon;
 		}
+		public SpeechItem(ITTSUserCallback callback, int user_arg) {
+      this.callback = callback;
+      this.callbackUserArg = user_arg;
+    }
 	}
 
 	private static final String ACTION = "android.intent.action.USE_TTS";
 	private static final String CATEGORY = "android.intent.category.TTS";
-	private static final String PKGNAME = "com.google.tts";
-	private static final String ESPEAK_SCRATCH_DIRECTORY = "/sdcard/espeak-data/scratch/";
+	private static final String PKGNAME = "com.google.snappytts";
 
 	final RemoteCallbackList<ITTSCallback> mCallbacks = new RemoteCallbackList<ITTSCallback>();
 
 	private TTSEngine engine;
 
-	private Boolean isSpeaking;
-	private ArrayList<SpeechItem> speechQueue;
-	private HashMap<String, SoundResource> earcons;
-	private HashMap<String, SoundResource> utterances;
+	private boolean isSpeaking;
+	private ArrayList<SpeechItem> speechQueue = new ArrayList<SpeechItem>();
+	private Map<String, SoundResource> earcons
+      = Collections.synchronizedMap(new HashMap<String, SoundResource>());
+	private Map<String, SoundResource> utterances
+      = Collections.synchronizedMap(new HashMap<String, SoundResource>());
 	private MediaPlayer player;
 	private TTSService self;
 
@@ -87,10 +104,19 @@ public class TTSService extends Service implements OnCompletionListener {
 	private int speechRate = 140;
 	private String language = "en-rUS";
 
-	private final ReentrantLock speechQueueLock = new ReentrantLock();
-	private final ReentrantLock synthesizerLock = new ReentrantLock();
 
 	private SpeechSynthesis nativeSynth;
+
+  private static final int MSG_NEW_ITEM = 1;
+  private static final int MSG_RUN_QUEUE_NEXT = 2;
+  private static final int MSG_STOP = 3;
+  private static final int MSG_SET_ENGINE = 10;
+  private static final int MSG_SET_SPEECH_RATE = 11;
+  private static final int MSG_SET_LANGUAGE = 12;
+  private static final int MSG_SYNTH_TO_FILE = 20;
+  private volatile int stopsCount;
+  private Object stopLock = new Object();
+  private volatile boolean isSynthesizing;
 
 	@Override
 	public void onCreate() {
@@ -98,7 +124,8 @@ public class TTSService extends Service implements OnCompletionListener {
 		Log.i("TTS", "TTS starting");
 		
 		// This should be changed to work using preferences
-		nativeSynth = new SpeechSynthesis("/data/data/com.google.marvin.espeak/lib/libespeakengine.so");
+		nativeSynth = new MySpeechSynthesis(
+        "/data/data/com.google.snappytts/lib/libespeakengine.so");
 
 		// android.os.Debug.waitForDebugger();
 		self = this;
@@ -106,12 +133,7 @@ public class TTSService extends Service implements OnCompletionListener {
 
 		prefs = PreferenceManager.getDefaultSharedPreferences(this);
 
-		earcons = new HashMap<String, SoundResource>();
-		utterances = new HashMap<String, SoundResource>();
-
-		speechQueue = new ArrayList<SpeechItem>();
 		player = null;
-
 
 		if (espeakIsUsable()) {
 			setEngine(TTSEngine.PRERECORDED_WITH_TTS);
@@ -121,19 +143,38 @@ public class TTSService extends Service implements OnCompletionListener {
 
 		setLanguage(prefs.getString("lang_pref", "en-rUS"));
 		setSpeechRate(Integer.parseInt(prefs.getString("rate_pref", "140")));
+
+    Log.i("TTS", "onCreate done.");
 	}
 
 	@Override
 	public void onDestroy() {
 		super.onDestroy();
+    Log.i("TTS", "onDestroy");
+
+    forceStop();
+
 		// Don't hog the media player
 		cleanUpPlayer();
 
-		nativeSynth.shutdown();
-
 		// Unregister all callbacks.
 		mCallbacks.kill();
+
+    // espeak_Terminate() will hang because of the commented out
+    // pthread_cancel calls. There doesn't seem to be much point in
+    // fixing up the cleanup sequence though. Secondly, if threads are
+    // left behind for any reason, Android will not cleanup and kill
+    // the process, and it seems like strange things can happen
+    // then. So use a heavy-handed approach and just exit(), since
+    // there's nothing else we really want to do here.
+
+		//nativeSynth.shutdown();
+    System.exit(0);
+
+    Log.d("TTS", "onDestroy done");
 	}
+
+  // Following methods are called on the service's main thread.
 
 	private void setSpeechRate(int rate) {
 		if (prefs.getBoolean("override_pref", false)) {
@@ -160,7 +201,8 @@ public class TTSService extends Service implements OnCompletionListener {
 	}
 
 	private void setEngine(TTSEngine selectedEngine) {
-		utterances = new HashMap<String, SoundResource>();
+    Log.i("TTS", "setEngine: " + selectedEngine.toString());
+    utterances.clear();
 		boolean fallbackToPrerecordedOnly = false;
 		if (selectedEngine == TTSEngine.TTS_ONLY) {
 			if (!espeakIsUsable()) {
@@ -190,6 +232,13 @@ public class TTSService extends Service implements OnCompletionListener {
 				R.raw.tick_snd));
 		earcons.put(TTSEarcon.TOCK.name(), new SoundResource(PKGNAME,
 				R.raw.tock_snd));
+    // For backwards compatibility:
+		utterances.put("[slnc]", new SoundResource(PKGNAME,
+				R.raw.slnc_snd));
+		utterances.put("[tick]", new SoundResource(PKGNAME,
+				R.raw.tick_snd));
+		utterances.put("[tock]", new SoundResource(PKGNAME,
+				R.raw.tock_snd));
 	}
 
 	private void loadUtterancesFromPropertiesFile() {
@@ -202,7 +251,7 @@ public class TTSService extends Service implements OnCompletionListener {
 			Enumeration<Object> textKeys = soundsamples.keys();
 			while (textKeys.hasMoreElements()) {
 				String text = textKeys.nextElement().toString();
-				String name = "com.google.tts:raw/"
+				String name = "com.google.snappytts:raw/"
 						+ soundsamples.getProperty(text);
 				TypedValue value = new TypedValue();
 				getResources().getValue(name, value, false);
@@ -222,33 +271,16 @@ public class TTSService extends Service implements OnCompletionListener {
 
 	// TODO: Make this generic for internal TTS
 	private boolean espeakIsUsable() {
-		if (!new File("/sdcard/").canWrite()) {
-			return false;
-		}
-
 		if (!ConfigurationManager.allFilesExist()) {
 			// This should have been taken care of when the TTS is launched
 			// by the check in the TTS.java wrapper.
+      Log.w("TTS", "espeakIsUsable returns false");
 			return false;
 		}
-		clearScratchFiles();
 		return true;
 	}
 
 	// TODO: Make this generic for internal TTS
-	private void clearScratchFiles() {
-		File scratchDir = new File(ESPEAK_SCRATCH_DIRECTORY);
-		boolean directoryExists = scratchDir.isDirectory();
-		if (directoryExists) {
-			File[] scratchFiles = scratchDir.listFiles();
-			for (int i = 0; i < scratchFiles.length; i++) {
-				scratchFiles[i].delete();
-			}
-		} else {
-			scratchDir.mkdir();
-		}
-	}
-
 	/**
 	 * Adds a sound resource to the TTS.
 	 * 
@@ -287,6 +319,7 @@ public class TTSService extends Service implements OnCompletionListener {
 	 *            The resource ID of the sound within its package
 	 */
 	private void addEarcon(String earcon, String packageName, int resId) {
+    // Called from the IBinder's thread pool.
 		earcons.put(earcon, new SoundResource(packageName, resId));
 	}
 
@@ -300,6 +333,7 @@ public class TTSService extends Service implements OnCompletionListener {
 	 *            path like: (/sdcard/mysounds/mysoundbite.mp3).
 	 */
 	private void addEarcon(String earcon, String filename) {
+    // Called from the IBinder's thread pool.
 		earcons.put(earcon, new SoundResource(filename));
 	}
 
@@ -316,13 +350,14 @@ public class TTSService extends Service implements OnCompletionListener {
 	 *            engines.
 	 */
 	private void speak(String text, int queueMode, ArrayList<String> params) {
+    // Called from the IBinder's thread pool.
+    Log.i("TTS", "speak: "+text);
 		if (queueMode == 0) {
 			stop();
 		}
-		speechQueue.add(new SpeechItem(text, params, false));
-		if (!isSpeaking) {
-			processSpeechQueue();
-		}
+    handler.sendMessage(
+        handler.obtainMessage(MSG_NEW_ITEM,
+                              new SpeechItem(text, params, false)));
 	}
 
 	/**
@@ -339,41 +374,143 @@ public class TTSService extends Service implements OnCompletionListener {
 	 */
 	private void playEarcon(String earcon, int queueMode,
 			ArrayList<String> params) {
+    // Called from the IBinder's thread pool.
+    Log.i("TTS", "earcon: "+earcon);
 		if (queueMode == 0) {
 			stop();
 		}
-		speechQueue.add(new SpeechItem(earcon, params, true));
-		if (!isSpeaking) {
-			processSpeechQueue();
-		}
+    handler.sendMessage(
+        handler.obtainMessage(MSG_NEW_ITEM,
+                              new SpeechItem(earcon, params, true)));
+	}
+
+	private void enqueueCallback(ITTSUserCallback callback, int user_arg) {
+    // Called from the IBinder's thread pool.
+    handler.sendMessage(
+        handler.obtainMessage(MSG_NEW_ITEM,
+                              new SpeechItem(callback, user_arg)));
 	}
 
 	/**
 	 * Stops all speech output and removes any utterances still in the queue.
 	 */
 	private void stop() {
-		Log.i("TTS", "Stopping");
-		speechQueue.clear();
-
-		nativeSynth.stop();
-		isSpeaking = false;
-		if (player != null) {
-			try {
-				player.stop();
-			} catch (IllegalStateException e) {
-				// Do nothing, the player is already stopped.
-			}
-		}
-		Log.i("TTS", "Stopped");
-	}
+    // Called from the IBinder's thread pool.
+    synchronized (stopLock) {
+      // Count how many pending stop messages are in the handler's queue.
+      ++stopsCount;
+      Log.i("TTS", String.format("Stopping: count %d", stopsCount));
+    }
+    handler.sendMessage(handler.obtainMessage(MSG_STOP));
+  }
 
 	public void onCompletion(MediaPlayer arg0) {
-		processSpeechQueue();
+    Log.i("TTS", "player onCompletion");
+    handler.sendMessage(handler.obtainMessage(MSG_RUN_QUEUE_NEXT));
 	}
+
+  private class MySpeechSynthesis extends SpeechSynthesis {
+    public MySpeechSynthesis(String nativeSoLib) {
+      super(nativeSoLib);
+    }
+    @Override
+    protected void onSynthesisCompleted() {
+      Log.i("TTS", "onSynthesisCompleted");
+      isSynthesizing = false;
+      handler.sendMessage(handler.obtainMessage(MSG_RUN_QUEUE_NEXT));
+    }
+  }
+
+  private Handler handler = new Handler() {
+      @Override
+      public void handleMessage(Message msg) {
+        switch (msg.what) {
+          case MSG_NEW_ITEM:
+            SpeechItem item = (SpeechItem)msg.obj;
+            Log.i("TTS", "MSG_NEW_ITEM: " + item.text);
+            speechQueue.add(item);
+            if (!isSpeaking)
+              // Start the queue.
+              processSpeechQueue();
+            break;
+          case MSG_RUN_QUEUE_NEXT:
+            //Log.i("TTS", "MSG_RUN_QUEUE_NEXT");
+            // When an utterance is finished playing/speaking, start
+            // on the next enqueued element.
+            processSpeechQueue();
+            break;
+          case MSG_STOP:
+            handleStop();
+            break;
+          case MSG_SET_ENGINE:
+            forceStop();
+            TTSEngine engine = (TTSEngine)msg.obj;
+            setEngine(engine);
+            break;
+          case MSG_SET_SPEECH_RATE:
+            forceStop();
+            int rate = msg.arg1;
+            setSpeechRate(rate);
+            break;
+          case MSG_SET_LANGUAGE:
+            forceStop();
+            String language = (String)msg.obj;
+            setLanguage(language);
+            break;
+          case MSG_SYNTH_TO_FILE:
+            forceStop();
+            Bundle b = msg.getData();
+            String text = b.getString("text");
+            ArrayList<String> params = b.getStringArrayList("params");
+            String filename = b.getString("filename");
+            synthesizeToFile(text, params, filename);
+            break;
+        }
+      }
+    };
+
+  private void forceStop() {
+    synchronized (stopLock) {
+      ++stopsCount;
+    }
+    handleStop();
+  }
+  private void handleStop() {
+    //Log.i("TTS", String.format("MSG_STOP: count %d", stopsCount));
+    if (stopsCount < 1)
+      throw new RuntimeException("Inconsistent stopsCount");
+    if (isSynthesizing) {
+      Log.i("TTS", "Stopping native");
+      nativeSynth.stop();
+      // On return from nativeSynth.stop(), onSynthesisCompleted may
+      // or may not have been called, but we are guaranteed that it
+      // will not be called later.
+      //Log.i("TTS", "native stopped");
+      if (isSynthesizing) {
+        // We interrupted it before the completion callback fired.
+        isSynthesizing = false;
+      }
+    } else if (isSpeaking) {
+      if (player != null) {
+        //Log.i("TTS", "Stopping player");
+        try {
+          player.stop();
+        } catch (IllegalStateException e) {
+          // Do nothing, the player is already stopped.
+        }
+      } //else Log.e("TTS", "No player to stop");
+    }
+    handler.removeMessages(MSG_RUN_QUEUE_NEXT);
+    processSpeechQueue();  // with stopsCount still > 0
+    // The above sets isSpeaking to false and empties the queue.
+    synchronized (stopLock) {
+      --stopsCount;
+    }
+  }
 
 	// TODO: Add commented out speech methods
 	private void speakWithChosenEngine(SpeechItem speechItem) {
-		Log.i("Selected engine: ", engine.toString());
+		//Log.i("Selected engine: ", engine.toString());
 		if (engine == TTSEngine.PRERECORDED_WITH_TTS) {
 			speakPrerecordedWithInternal(speechItem.text, speechItem.params);
 		} else if (engine == TTSEngine.TTS_ONLY) {
@@ -405,36 +542,16 @@ public class TTSService extends Service implements OnCompletionListener {
 
 	private void speakInternalOnly(final String text,
 			final ArrayList<String> params) {
-		class SynthThread implements Runnable {
-			public void run() {
-				boolean synthAvailable = false;
-				try {
-					synthAvailable = synthesizerLock.tryLock();
-					if (!synthAvailable) {
-						Thread.sleep(100);
-						Thread synth = (new Thread(new SynthThread()));
-						synth.setPriority(Thread.MIN_PRIORITY);
-						synth.start();
-						return;
-					}
-					nativeSynth.speak(text);
-				} catch (InterruptedException e) {
-					// TODO Auto-generated catch block
-					e.printStackTrace();
-				} finally {
-					// This check is needed because finally will always run;
-					// even if the
-					// method returns somewhere in the try block.
-					if (synthAvailable) {
-						synthesizerLock.unlock();
-					}
-				}
-			}
-		}
-		Thread synth = (new Thread(new SynthThread()));
-		synth.setPriority(Thread.MIN_PRIORITY);
-		synth.start();
-	}
+    if (isSynthesizing)
+      throw new RuntimeException("Already synthesizing");
+    isSynthesizing = true;
+    Log.i("TTS", "synthesizing: " +text);
+    boolean ssml = params != null
+        && params.contains(TTSParams.USE_SSML.toString());
+    nativeSynth.speak(text, ssml); 
+    // Returns immediately.
+    //Log.i("TTS", "nativeSynth.speak() has returned");
+  }
 
 	private SoundResource getSoundResource(SpeechItem speechItem) {
 		SoundResource sr = null;
@@ -471,12 +588,7 @@ public class TTSService extends Service implements OnCompletionListener {
 	// Special algorithm to decompose numbers into speakable parts.
 	// This will handle positive numbers up to 999.
 	private boolean decomposedToNumbers(String text, ArrayList<String> params) {
-		boolean speechQueueAvailable = false;
-		try {
-			speechQueueAvailable = speechQueueLock.tryLock();
-			if (!speechQueueAvailable || (speechQueue.size() < 1)) {
-				return false;
-			}
+    try {
 			int number = Integer.parseInt(text);
 			ArrayList<SpeechItem> decomposedNumber = new ArrayList<SpeechItem>();
 			// Handle cases that are between 100 and 999, inclusive
@@ -485,14 +597,13 @@ public class TTSService extends Service implements OnCompletionListener {
 				number = number / 100;
 				decomposedNumber.add(new SpeechItem(Integer.toString(number),
 						params, false));
-				decomposedNumber.add(new SpeechItem("[slnc]", params, true));
+				decomposedNumber.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 				decomposedNumber.add(new SpeechItem("hundred", params, false));
-				decomposedNumber.add(new SpeechItem("[slnc]", params, true));
+				decomposedNumber.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 				if (remainder > 0) {
 					decomposedNumber.add(new SpeechItem(Integer
 							.toString(remainder), params, false));
 				}
-				speechQueue.remove(0);
 				speechQueue.addAll(0, decomposedNumber);
 				return true;
 			}
@@ -504,56 +615,55 @@ public class TTSService extends Service implements OnCompletionListener {
 					decomposedNumber.add(new SpeechItem(Integer.toString(20),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 20;
 				} else if ((number > 30) && (number < 40)) {
 					decomposedNumber.add(new SpeechItem(Integer.toString(30),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 30;
 				} else if ((number > 40) && (number < 50)) {
 					decomposedNumber.add(new SpeechItem(Integer.toString(40),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 40;
 				} else if ((number > 50) && (number < 60)) {
 					decomposedNumber.add(new SpeechItem(Integer.toString(50),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 50;
 				} else if ((number > 60) && (number < 70)) {
 					decomposedNumber.add(new SpeechItem(Integer.toString(60),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 60;
 				} else if ((number > 70) && (number < 80)) {
 					decomposedNumber.add(new SpeechItem(Integer.toString(70),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 70;
 				} else if ((number > 80) && (number < 90)) {
 					decomposedNumber.add(new SpeechItem(Integer.toString(80),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 80;
 				} else if ((number > 90) && (number < 100)) {
 					decomposedNumber.add(new SpeechItem(Integer.toString(90),
 							params, false));
 					decomposedNumber
-							.add(new SpeechItem("[slnc]", params, true));
+							.add(new SpeechItem(TTSEarcon.SILENCE.name(), params, true));
 					digit = number - 90;
 				}
 				if (digit > 0) {
 					decomposedNumber.add(new SpeechItem(
 							Integer.toString(digit), params, false));
 				}
-				speechQueue.remove(0);
 				speechQueue.addAll(0, decomposedNumber);
 				return true;
 			}
@@ -562,14 +672,8 @@ public class TTSService extends Service implements OnCompletionListener {
 			return false;
 		} catch (NumberFormatException nfe) {
 			return false;
-		} finally {
-			// This check is needed because finally will always run; even if the
-			// method returns somewhere in the try block.
-			if (speechQueueAvailable) {
-				speechQueueLock.unlock();
-			}
-		}
-	}
+    }
+  }
 
 	private void dispatchSpeechCompletedCallbacks(String mark) {
 		Log.i("TTS callback", "dispatch started");
@@ -584,17 +688,36 @@ public class TTSService extends Service implements OnCompletionListener {
 			}
 		}
 		mCallbacks.finishBroadcast();
-		Log.i("TTS callback", "dispatch completed to " + N);
+		//Log.i("TTS callback", "dispatch completed to " + N);
 	}
 
+  private void doUserCallback(SpeechItem item, boolean interrupted) {
+    if (item.callback != null) {
+      Log.i("TTS", "user callback");
+      try {
+        item.callback.onCompletion(interrupted, item.callbackUserArg);
+      } catch (RemoteException e) {
+      }
+    }
+  }
+
 	private void processSpeechQueue() {
-		boolean speechQueueAvailable = false;
-		try {
-			speechQueueAvailable = speechQueueLock.tryLock();
-			if (!speechQueueAvailable) {
-				return;
-			}
-			if (speechQueue.size() < 1) {
+    synchronized (stopLock) {
+      int stopsCount = this.stopsCount;
+    }
+    if (stopsCount > 0) {
+      // There are pending MSG_STOP messages, so we flush out the
+      // queue instead of speaking it.
+      Log.i("TTS", "processSpeechQueue while stopping");
+      for (SpeechItem item : speechQueue)
+        doUserCallback(item, true);
+      speechQueue.clear();
+      isSpeaking = false;
+      return;
+    }
+    while(true) {
+			if (speechQueue.isEmpty()) {
+        Log.i("TTS", "speechQueue empty");
 				isSpeaking = false;
 				// Dispatch a completion here as this is the
 				// only place where speech completes normally.
@@ -604,7 +727,11 @@ public class TTSService extends Service implements OnCompletionListener {
 				return;
 			}
 
-			SpeechItem currentSpeechItem = speechQueue.get(0);
+			SpeechItem currentSpeechItem = speechQueue.remove(0);
+      if (currentSpeechItem.callback != null) {
+        doUserCallback(currentSpeechItem, false);
+        continue;  // process next queue item.
+      }
 			isSpeaking = true;
 			SoundResource sr = getSoundResource(currentSpeechItem);
 			// Synth speech as needed - synthesizer should call
@@ -626,9 +753,10 @@ public class TTSService extends Service implements OnCompletionListener {
 						ctx = this
 								.createPackageContext(sr.sourcePackageName, 0);
 					} catch (NameNotFoundException e) {
+            Log.e("TTS", "name not found playing sound resource");
 						e.printStackTrace();
-						speechQueue.remove(0); // Remove it from the queue and
 						// move on
+            speechQueue.clear();
 						isSpeaking = false;
 						return;
 					}
@@ -641,6 +769,7 @@ public class TTSService extends Service implements OnCompletionListener {
 				// Check if Media Server is dead; if it is, clear the queue and
 				// give up for now - hopefully, it will recover itself.
 				if (player == null) {
+          Log.e("TTS", "dead player");
 					speechQueue.clear();
 					isSpeaking = false;
 					return;
@@ -649,22 +778,16 @@ public class TTSService extends Service implements OnCompletionListener {
 				try {
 					player.start();
 				} catch (IllegalStateException e) {
+          Log.e("TTS", "Illegal state starting player");
+          e.printStackTrace();
 					speechQueue.clear();
 					isSpeaking = false;
 					cleanUpPlayer();
 					return;
 				}
 			}
-			if (speechQueue.size() > 0) {
-				speechQueue.remove(0);
-			}
-		} finally {
-			// This check is needed because finally will always run; even if the
-			// method returns somewhere in the try block.
-			if (speechQueueAvailable) {
-				speechQueueLock.unlock();
-			}
-		}
+      break;
+    }
 	}
 
 	private void cleanUpPlayer() {
@@ -689,33 +812,15 @@ public class TTSService extends Service implements OnCompletionListener {
 	 * @return A boolean that indicates if the synthesis succeeded
 	 */
 	private boolean synthesizeToFile(String text, ArrayList<String> params,
-			String filename, boolean calledFromApi) {
-		// Only stop everything if this is a call made by an outside app trying
-		// to
-		// use the API. Do NOT stop if this is a call from within the service as
-		// clearing the speech queue here would be a mistake.
-		if (calledFromApi) {
-			stop();
-		}
+			String filename) {
+    // Don't allow a filename that is too long
+    if (filename.length() > 250) {
+      return false;
+    }
+    // Is this still needed? Not really tested since latest
+    // changes. It's still synchronous and now on the main thread...
 		Log.i("TTS", "Synthesizing " + filename);
-		boolean synthAvailable = false;
-		try {
-			synthAvailable = synthesizerLock.tryLock();
-			if (!synthAvailable) {
-				return false;
-			}
-			// Don't allow a filename that is too long
-			if (filename.length() > 250) {
-				return false;
-			}
-			nativeSynth.synthesizeToFile(text, filename);
-		} finally {
-			// This check is needed because finally will always run; even if the
-			// method returns somewhere in the try block.
-			if (synthAvailable) {
-				synthesizerLock.unlock();
-			}
-		}
+    nativeSynth.synthesizeToFile(text, filename);
 		Log.i("TTS", "Completed synthesis for " + filename);
 		return true;
 	}
@@ -753,17 +858,21 @@ public class TTSService extends Service implements OnCompletionListener {
 		 * @param selectedEngine
 		 *            The TTS engine that should be used
 		 */
-		public void setEngine(String selectedEngine) {
+    public void setEngine(String selectedEngine) {
 			TTSEngine theEngine;
 			if (selectedEngine.equals(TTSEngine.TTS_ONLY.toString())) {
 				theEngine = TTSEngine.TTS_ONLY;
 			} else if (selectedEngine.equals(TTSEngine.PRERECORDED_WITH_TTS
 					.toString())) {
 				theEngine = TTSEngine.PRERECORDED_WITH_TTS;
-			} else {
+			} else if (selectedEngine.equals(TTSEngine.PRERECORDED_ONLY
+					.toString())) {
 				theEngine = TTSEngine.PRERECORDED_ONLY;
+			} else {
+        Log.w("TTS", String.format("setEngine(): unrecognized engine '%s', defaulting to PRERECORDED_WITH_TTS.", selectedEngine));
+				theEngine = TTSEngine.PRERECORDED_WITH_TTS;
 			}
-			self.setEngine(theEngine);
+      handler.sendMessage(handler.obtainMessage(MSG_SET_ENGINE, theEngine));
 		}
 
 		/**
@@ -820,7 +929,7 @@ public class TTSService extends Service implements OnCompletionListener {
 		 * @return Boolean to indicate whether or not the TTS is speaking
 		 */
 		public boolean isSpeaking() {
-			return (self.isSpeaking && (speechQueue.size() < 1));
+			return self.isSpeaking;
 		}
 
 		/**
@@ -833,8 +942,15 @@ public class TTSService extends Service implements OnCompletionListener {
 		 * @param resId
 		 *            The resource ID of the sound within its package
 		 */
-		public void addSpeech(String text, String packageName, int resId) {
-			self.addSpeech(text, packageName, resId);
+		public void addSpeech(final String text,
+                          final String packageName, final int resId) {
+      // The reason this needs to be synchronized is that setEngine
+      // clears utterances. Not sure if that's by design...
+      handler.post(new Runnable() {
+          public void run() {
+            self.addSpeech(text, packageName, resId);
+          }
+        });
 		}
 
 		/**
@@ -846,8 +962,14 @@ public class TTSService extends Service implements OnCompletionListener {
 		 *            The filename of the sound resource. This must be a
 		 *            complete path like: (/sdcard/mysounds/mysoundbite.mp3).
 		 */
-		public void addSpeechFile(String text, String filename) {
-			self.addSpeech(text, filename);
+		public void addSpeechFile(final String text, final String filename) {
+      // The reason this needs to be synchronized is that setEngine
+      // clears utterances. Not sure if that's by design...
+      handler.post(new Runnable() {
+          public void run() {
+            self.addSpeech(text, filename);
+          }
+        });
 		}
 
 		/**
@@ -885,7 +1007,8 @@ public class TTSService extends Service implements OnCompletionListener {
 		 *            The speech rate that should be used
 		 */
 		public void setSpeechRate(int speechRate) {
-			self.setSpeechRate(speechRate);
+      handler.sendMessage(handler.obtainMessage(
+                              MSG_SET_SPEECH_RATE, speechRate, 0));
 		}
 
 		/**
@@ -899,7 +1022,7 @@ public class TTSService extends Service implements OnCompletionListener {
 		 *            http://en.wikipedia.org/wiki/IETF_language_tag
 		 */
 		public void setLanguage(String language) {
-			self.setLanguage(language);
+      handler.sendMessage(handler.obtainMessage(MSG_SET_LANGUAGE, language));
 		}
 
 		/**
@@ -941,8 +1064,29 @@ public class TTSService extends Service implements OnCompletionListener {
 			if (params != null) {
 				speakingParams = new ArrayList<String>(Arrays.asList(params));
 			}
-			return self.synthesizeToFile(text, speakingParams, filename, true);
+      Bundle b = new Bundle();
+      b.putString("text", text);
+      b.putStringArrayList("params", speakingParams);
+      b.putString("filename", filename);
+      Message msg = handler.obtainMessage(MSG_SYNTH_TO_FILE);
+      msg.setData(b);
+      handler.sendMessage(msg);
+      return true;
 		}
+
+    public void enqueueCallback(ITTSUserCallback callback, int user_arg) {
+      self.enqueueCallback(callback, user_arg);
+    }
 	};
 
+  private static int instanceCount;
+  public TTSService() {
+    // Only one instance is supposed to be created for a
+    // service. Somehow though it happened that the OS got confused
+    // and ran multiple instances of this class (in the same process)
+    // and that took me a while to debug. So warn about this.
+    int n = ++instanceCount;
+    if (n > 1)
+      Log.e("TTS", String.format("Instance count %d", n));
+  }
 }

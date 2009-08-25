@@ -1,37 +1,52 @@
-# Copyright (C) 2008 The Android Open Source Project
-#
-# Licensed under the Apache License, Version 2.0 (the "License");
-# you may not use this file except in compliance with the License.
-# You may obtain a copy of the License at
-#
-#      http://www.apache.org/licenses/LICENSE-2.0
-#
-# Unless required by applicable law or agreed to in writing, software
-# distributed under the License is distributed on an "AS IS" BASIS,
-# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-# See the License for the specific language governing permissions and
-# limitations under the License.
-#
-
 LOCAL_PATH:= $(call my-dir)
-
 include $(CLEAR_VARS)
 
-LOCAL_SRC_FILES := $(call all-subdir-java-files)
+LOCAL_SRC_FILES:= \
+	com_google_espeakengine.cpp
 
-LOCAL_JAVA_RESOURCE_DIRS := resources
+LOCAL_C_INCLUDES += \
+	$(JNI_H_INCLUDE) \
+	$(LOCAL_PATH)/android/graphics \
+	$(call include-path-for, corecg graphics) \
+	$(call include-path-for, libhardware)/hardware \
+	$(LOCAL_PATH)/../../include/ui \
+	$(LOCAL_PATH)/../../include/utils \
+	external/espeak/src \
 
-LOCAL_JAVA_LIBRARIES := core framework
+LOCAL_STATIC_LIBRARIES := \
+	libespeak
 
-LOCAL_MODULE:= espeakengine
+LOCAL_SHARED_LIBRARIES := \
+        libandroid_runtime \
+	libnativehelper \
+	libmedia \
+	libutils \
+	libcutils
 
-LOCAL_DX_FLAGS := --core-library
+XLOCAL_SHARED_LIBRARIES := \
+	libexpat \
+	libnetutils \
+	libui \
+	libsgl \
+	libcorecg \
+	libsqlite \
+	libdvm \
+	libGLES_CM \
+	libhardware \
+	libsonivox \
+	libcrypto \
+	libssl \
+	libicuuc \
+	libicui18n \
+	libicudata \
+	libwpa_client
 
-include $(BUILD_JAVA_LIBRARY)
+LOCAL_MODULE:= libespeakengine
 
-# Include subdirectory makefiles
-# ============================================================
+LOCAL_ARM_MODE := arm
 
-ifneq ($(SDK_ONLY),true)
-  include $(call first-makefiles-under,$(LOCAL_PATH))
-endif
+LOCAL_PRELINK_MODULE := false
+
+include $(BUILD_SHARED_LIBRARY)
+
+include $(call all-makefiles-under,$(LOCAL_PATH))

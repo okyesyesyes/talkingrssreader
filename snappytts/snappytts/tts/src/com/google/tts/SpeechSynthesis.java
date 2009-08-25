@@ -48,7 +48,7 @@ public class SpeechSynthesis {
   /**
    * Synthesize speech and speak it directly using AudioTrack.
    */
-  public native final void speak(String text);
+  public native final void speak(String text, boolean isSsml);
 
   /**
    * Synthesize speech to a file. The current implementation writes a valid WAV
@@ -66,12 +66,6 @@ public class SpeechSynthesis {
    * Sets the speech rate
    */
   public native final void setSpeechRate(int speechRate);
-  
-
-  /**
-   * Plays the given audio buffer
-   */
-  public native final void playAudioBuffer(int bufferPointer, int bufferSize);
   
 
   /**
@@ -113,9 +107,13 @@ public class SpeechSynthesis {
    * Callback from the C layer
    */
   @SuppressWarnings("unused")
-  private static void postNativeSpeechSynthesizedInJava(Object tts_ref, int bufferPointer, int bufferSize){
-	  Log.i("TTS plugin debug", "bufferPointer: " + bufferPointer + " bufferSize: " + bufferSize);
+  private static void synthesisCompleted(Object tts_ref) {
+	  //Log.i("TTS plugin debug", "java synthesisCompleted");
+    // Is the weak ref really needed?
 	  SpeechSynthesis nativeTTS = (SpeechSynthesis)((WeakReference)tts_ref).get();
-	  nativeTTS.playAudioBuffer(bufferPointer, bufferSize);	  
+    nativeTTS.onSynthesisCompleted();
+  }
+
+  protected void onSynthesisCompleted() {
   }
 }

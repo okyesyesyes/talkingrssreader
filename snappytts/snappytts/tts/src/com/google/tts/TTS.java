@@ -15,6 +15,8 @@
  */
 package com.google.tts;
 
+import com.google.snappytts.R;
+
 import android.content.ComponentName;
 import android.content.Context;
 import android.content.Intent;
@@ -74,6 +76,7 @@ public class TTS {
 	private InitListener cb = null;
 	private int version = -1;
 	private boolean started = false;
+  private boolean disconnected = false;
 	private boolean showInstaller = false;
 	private TTSVersionAlert versionAlert = null;
 
@@ -145,7 +148,7 @@ public class TTS {
 			try {
 				int flags = Context.CONTEXT_INCLUDE_CODE
 						| Context.CONTEXT_IGNORE_SECURITY;
-				Context myContext = ctx.createPackageContext("com.google.tts",
+				Context myContext = ctx.createPackageContext("com.google.snappytts",
 						flags);
 				Class<?> appClass = myContext.getClassLoader().loadClass(
 						"com.google.tts.ConfigurationManager");
@@ -170,6 +173,7 @@ public class TTS {
 		// Initialize the TTS, run the callback after the binding is successful
 		serviceConnection = new ServiceConnection() {
 			public void onServiceConnected(ComponentName name, IBinder service) {
+        disconnected = false;
 				itts = ITTS.Stub.asInterface(service);
 				try {
 					version = itts.getVersion();
@@ -225,6 +229,7 @@ public class TTS {
 				itts = null;
 				cb = null;
 				started = false;
+        disconnected = true;
 			}
 		};
 
@@ -336,6 +341,27 @@ public class TTS {
 		}
 	}
 
+	public void addEarcon(String name, String packagename, int resourceId) {
+		if (!started) {
+			return;
+		}
+		try {
+			itts.addEarcon(name, packagename, resourceId);
+		} catch (RemoteException e) {
+			// TTS died; restart it.
+			started = false;
+			initTts();
+		} catch (NullPointerException e) {
+			// TTS died; restart it.
+			started = false;
+			initTts();
+		} catch (IllegalStateException e) {
+			// TTS died; restart it.
+			started = false;
+			initTts();
+		}
+	}
+
 	/**
 	 * Speaks the string using the specified queuing strategy and speech
 	 * parameters. Note that the speech parameters are not universally supported
@@ -357,6 +383,10 @@ public class TTS {
 	 *            effect on eSpeak.
 	 */
 	public void speak(String text, int queueMode, String[] params) {
+    if (disconnected) {
+      Log.w("TTSLib", "TTS had disconnected, attempting reconnect");
+      initTts();
+    }
 		Log.i("TTS received: ", text);
 		if (!started) {
 			return;
@@ -366,6 +396,7 @@ public class TTS {
 		} catch (RemoteException e) {
 			// TTS died; restart it.
 			started = false;
+      disconnected = true;
 			initTts();
 		} catch (NullPointerException e) {
 			// TTS died; restart it.
@@ -461,6 +492,30 @@ public class TTS {
 		}
 		try {
 			itts.stop();
+		} catch (RemoteException e) {
+			// TTS died; restart it.
+			started = false;
+			initTts();
+		} catch (NullPointerException e) {
+			// TTS died; restart it.
+			started = false;
+			initTts();
+		} catch (IllegalStateException e) {
+			// TTS died; restart it.
+			started = false;
+			initTts();
+		}
+	}
+
+  public static abstract class TTSUserCallback extends ITTSUserCallback.Stub {
+  }
+
+	public void enqueueCallback(TTSUserCallback callback, int user_arg) {
+		if (!started) {
+			return;
+		}
+		try {
+			itts.enqueueCallback(callback, user_arg);
 		} catch (RemoteException e) {
 			// TTS died; restart it.
 			started = false;

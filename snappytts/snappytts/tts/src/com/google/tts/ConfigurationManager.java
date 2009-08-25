@@ -15,6 +15,7 @@
  */
 package com.google.tts;
 
+import com.google.snappytts.R;
 
 import java.io.File;
 import java.io.FileOutputStream;

@@ -9,6 +9,7 @@
  
 package com.google.tts;
 import com.google.tts.ITTSCallback;
+import com.google.tts.ITTSUserCallback;
 
 // Declare the interface.
 interface ITTS {
@@ -27,4 +28,5 @@ interface ITTS {
   void addEarconFile(in String earcon, in String filename);
   void registerCallback(ITTSCallback cb);
   void unregisterCallback(ITTSCallback cb);
+  void enqueueCallback(in ITTSUserCallback callback, in int user_arg);
 }

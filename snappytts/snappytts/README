@@ -1,0 +1,53 @@
+Snappy TTS
+
+Because of sluggishness writing to the sdcard and difficulties
+tracking speech completion, I was motivated to complete the work to
+move to the AudioTrack API. These modifications are based off of
+rev 307 of tts and native from http://eyes-free.googlecode.com/svn/trunk/.
+
+Native changes:
+-Enabled espeak's asynchronous mode,
+-Made sure speech starts quickly,
+-Made the stop cycle as reliable and fast as I could.
+-Completion signaled through a callback up to java.
+-Completion when playing finishes (rather than when synthesis finishes).
+-Espeak and AudioTrack quirks.
+
+TTSService changes:
+-Use a handler in TTSService to simplify the threading.
+-All calls down to the native layer come from one thread.
+-isSpeaking(): only returns false when we've actually shut up.
+-Move libespeakengine.so back to being bundled in the tts apk, so
+ as to avoid having two APKs.
+
+Alternative TTS callback implementation: client can easily pass in its
+own remote callback object. Enqueue that along with speech
+items. Callback only to interested client.
+
+TTS.java:
+-Add re-bind attempt on speak() calls. Helps a lot to get speech
+ back in a timely manner when reinstalling the tts.
+-Add missing addEarcon() wrapper method.
+
+The TTS client API and service interface are extended but are still
+compatible with client apps written against Eyes-free TTS v1.4 and
+perhaps 1.5.
+
+To avoid confusion, I've renamed the Android package to
+com.google.snappytts (although the java package name remains
+unchanged).
+
+Native build instructions are in native/README.
+
+One remark about the espeak changes: when closing down the library,
+espeak uses pthread_cancel() to break some semaphore waits and cause
+all threads to exit. Android's C library (BIONIC) doesn't have
+pthread_cancel(). If threads are left behind, Android can keep the
+process alive and reuse it for the next instance of the TTS
+service. The code isn't written with this in mind at all and very
+strange things then happen. I went with the simplest solution to
+ensure proper cleanup: just forcibly exit the process. When the TTS
+service is bundled with an app, such as the Talking Rss Reader, the
+"android:process" attribute can be used in the manifest to ensure the
+service runs in its own process, so as not to take down the app when
+it exits (such as on Android configuration change).

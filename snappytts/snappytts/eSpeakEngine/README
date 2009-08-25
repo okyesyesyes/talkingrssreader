@@ -1,0 +1,9 @@
+When I branched off from the Eyes-free TTS, work was in progress to
+make speech engines pluggable. Work wasn't complete at the rev I
+branched from. And now I've extended the API in a direction of my
+own. So to avoid dealing with two Android packages, I decided to
+revert part of the change and go back to having libespeakengine.so
+bundled with the tts Android package. (It's essentially just a path
+string in TTSService.java.) As a result, speech engines are not
+pluggable in this version of the TTS, and this directory is pretty
+much superfluous.

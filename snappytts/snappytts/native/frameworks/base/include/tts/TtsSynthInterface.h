@@ -24,6 +24,8 @@ using namespace android;
 //    int          - The number of channels
 //    int8_t *     - A buffer of audio data
 //    size_t       - The size of the buffer
+// The callback returns true when synthesis should be interrupted:
+//    stop() has been or will soon be called.
 // Note about memory management:
 //    the implementation of TtsSynthInterface is responsible for the management of the memory 
 //    it allocates to store the synthesized speech. After the execution of the callback
@@ -31,7 +33,7 @@ using namespace android;
 //    free to reuse or free the previously allocated memory.
 //    In other words, the implementation of the "synthDoneCB" callback cannot use
 //    the pointer to the buffer of audio samples outside of the callback itself.
-typedef void (synthDoneCB_t)(void *, uint32_t, AudioSystem::audio_format, int, int8_t *, size_t);
+typedef bool (synthDoneCB_t)(void *, uint32_t, AudioSystem::audio_format, int, int8_t *, size_t);
 
 class TtsSynthInterface;
 extern "C" TtsSynthInterface* getTtsSynth();
@@ -97,10 +99,10 @@ public:
     //      data is specified in the format xx-rYY, where xx is a two letter ISO 639-1 language code
     //      in lowercase and rYY is a two letter ISO 3166-1-alpha-2 language code in uppercase 
     //      preceded by a lowercase "r".
-    virtual tts_result synth(const char *text, void *userdata);
+  virtual tts_result synth(const char *text, bool useSsml, bool sync,
+                           void *userdata);
     
     // Synthesizes IPA text. When synthesis completes, the engine must call the given callback to notify the TTS API.
     // returns TTS_FEATURE_UNSUPPORTED if IPA is not supported, otherwise TTS_SUCCESS or TTS_FAILURE
     virtual tts_result synthIPA(const char *text, void *userdata);
 };
-

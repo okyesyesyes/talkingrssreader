@@ -20,7 +20,16 @@ source package.  See the instructions here:
 Follow the instructions and complete a full build of Android before
 proceeding.
 
-Copy external/espeak to the "external" directory in the Android source, copy frameworks/tts to the "frameworks" directory in the Android source, then create
+Copy external/espeak to the "external" directory in the Android source,
+
+*Note you now need to unzip external/espeak-1.39-source.zip and apply
+*the two patches found in external/*.diff.
+
+copy frameworks/tts to the "frameworks" directory in the Android source,
+
+*and similarly for frameworks/ base/ and espeakengine/
+
+then create
 a java directory under frameworks/tts and copy SpeechSynthesis.java (from
 MY_SVN_DIRECTORY/tts/src/com/google/tts) into frameworks/tts/java.
 To recompile just those directories, assuming you have run
@@ -28,13 +37,18 @@ To recompile just those directories, assuming you have run
 
   mmm external/espeak
 
+*  mmm frameworks/espeakengine
+
   mmm frameworks/tts
 
 When you're done, you'll get this file:
 
   out/target/product/generic/system/lib/libspeechsynthesis.so
 
+*and out/target/product/generic/system/lib/libspeechsynthesis.so
+
 Copy this file to tts/libs/armeabi. 
+*Both of them.
 
 In order to make use of this file, you will need to make sure that libs/armeabi/libspeechsynthesis.so is copied into your apk before it is signed.
 As of the Cupcake SDK (SDK 1.5), any .so files under libs/armeabi will be

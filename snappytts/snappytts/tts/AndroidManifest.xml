@@ -1,12 +1,12 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-          package="com.google.tts"
+          package="com.google.snappytts"
           android:versionCode="10"
           android:versionName="1.5">
-    <application android:icon="@drawable/tts" android:label="@string/app_name">
+    <application android:icon="@drawable/tts" android:label="snappytts">
 	  <service android:enabled="true" 
-	    	android:name=".TTSService" 
-	    	android:label="@string/app_name" 
+	    	android:name="com.google.tts.TTSService" 
+	    	android:label="snappytts" 
 	    	android:icon="@drawable/tts" >
 	    	<intent-filter>
 	    		<action android:name="android.intent.action.USE_TTS" />
@@ -14,14 +14,14 @@
 			  </intent-filter>
 		</service>
 		
-		<activity android:name=".ConfigurationManager">
+		<activity android:name="com.google.tts.ConfigurationManager">
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
 		</activity>
 		
-		<activity android:name="PrefsActivity">
+		<activity android:name="com.google.tts.PrefsActivity">
     </activity>
 	</application>
 	

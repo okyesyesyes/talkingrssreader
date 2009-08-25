@@ -21,5 +21,6 @@ package com.google.tts;
  * @author clchen@google.com (Charles L. Chen)
  */
 public enum TTSParams {
-  VOICE_MALE, VOICE_FEMALE, VOICE_ROBOT
+  VOICE_MALE, VOICE_FEMALE, VOICE_ROBOT,
+  USE_SSML
 }

@@ -1,0 +1,7 @@
+#!/bin/sh
+# Simplistic script to jar up the TTS client library stub.
+rm bin/classes/com/google/tts/TTSService*.class \
+   bin/classes/com/google/tts/SpeechSynthesis*.class
+${JAVA_HOME}/bin/jar cf snappytts_lib.jar \
+  -C bin/classes \
+  com/google/tts
