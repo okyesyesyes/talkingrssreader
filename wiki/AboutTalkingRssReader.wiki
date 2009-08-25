@@ -11,7 +11,7 @@ speech picks up at the first full sentence from the top of the
 screen. Allows jumping to the next or previous sentence using the
 trackball.
 
-Read the [http://talkingrssreader.googlecode.com/svn/trunk/res/raw/help.html Help screen here].
+Read the [http://talkingrssreader.googlecode.com/svn/trunk/talkingrss/res/raw/help.html Help screen here].
 
 Basic Google Reader functionality is supported, such as choosing one
 of your feeds, subscribing and unsubscribing and starring items.
