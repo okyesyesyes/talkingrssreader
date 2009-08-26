@@ -2,7 +2,7 @@
 
 = About the Code =
 
-== What's interesting inthis code ==
+== What's interesting in this code ==
 
 The synchronization of speech with page scrolling is achieved through
 an interesting technique involving bidirectional communication between
