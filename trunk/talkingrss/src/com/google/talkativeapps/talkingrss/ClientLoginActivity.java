@@ -137,7 +137,7 @@ public class ClientLoginActivity extends Activity {
     passwordEdit.setOnFocusChangeListener(new View.OnFocusChangeListener() {
         public void onFocusChange(View v, boolean hasFocus) {
           if (hasFocus)
-            // don't speak the value outloud.
+            // don't speak the value out loud.
             Core.tts.speak(getString(R.string.login_password_hint), 0, null);
         }
       });
