@@ -6,7 +6,7 @@
 
 The synchronization of speech with page scrolling is achieved through
 an interesting technique involving bidirectional communication between
-the Android app and a piece of javascript running in the WebView.
+the Android app and a piece of javascript running in the !WebView.
 
 There may be interest in the code that walks the DOM tree, splitting
 the text into utterances corresponding to sentences, and adding
@@ -22,25 +22,28 @@ E-mail app and have it read the body of an E-mail message.
 
 The code also shows how to make some UI components self-voicing. There
 is a reusable focus announcer and text watcher that are good for
-buttons and EditTexts. There is a spoken error dialog and spoken
+buttons and !EditTexts. There is a spoken error dialog and spoken
 toasts. There is a talking !ListView, adapted by using an
 !OnItemSelectedListener to track focus. Speaking out the options menu
 required that I reimplement the menu with a !ListView, because the
 built-in menu lacks a callback on item focus change.
 
 This app relies on a modified version of the TTS for Android package
-from [http://eyes-free.googlecode.com the Eyes-free project],
-which is based on [http://espeak.sourceforge.net/ the eSpeak speech synthesizer].
+from
+[http://eyes-free.googlecode.com the Eyes-free project],
+which is based on
+[http://espeak.sourceforge.net/ the eSpeak speech synthesizer].
 The modified TTS is bundled inside the Talking RSS Reader application
 package. The modifications I made are for much increased
 responsiveness, using the Android !AudioTrack API, reworked threading,
 and to make it possible to reliably track speech progress with a fancy
 speech completion callback. See
-[https://talkingrssreader.googlecode.com/svn/snappytts/snappytts/README
-this README] for more details.
+[http://talkingrssreader.googlecode.com/svn/snappytts/snappytts/README this README]
+for more details.
 
-Development of the [http://eyes-free.googlecode.com Eyes-free
-project's TTS] has stopped, as far as I know, since the announcement
+Development of the
+[http://eyes-free.googlecode.com Eyes-free project's TTS]
+has stopped, as far as I know, since the announcement
 that SVOX is coming to Android's _donut_ release. Therefore the
 modifications made for this app will not be folded back into the
 Eyes-free project TTS. The modified TTS bundled with this app was
