@@ -175,7 +175,6 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
       htmlParseTask = null;
     }
     webView.stopLoading();
-    webView.destroy();
     webView = null;
   }
 
