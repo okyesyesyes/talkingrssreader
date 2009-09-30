@@ -132,7 +132,8 @@ public class ConfigurationManager extends Activity {
       espeakDataDir.mkdir();
 
       // Download the espeak-data zip file
-      String fileUrl = "http://eyes-free.googlecode.com/svn/trunk/thirdparty/espeak-data.zip";
+      String fileUrl
+          = "http://talkingrssreader.googlecode.com/svn/third_party/espeak-data.zip";
       fileUrl = (new URL(new URL(fileUrl), fileUrl)).toString();
       URL url = new URL(fileUrl);
       URLConnection cn = url.openConnection();
