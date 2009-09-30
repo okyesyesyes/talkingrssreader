@@ -24,6 +24,7 @@ carry only summaries.
   * Control to navigate to previous/next paragraph, and to top/bottom.
   * Html parsing ought to be done in background ahead of time, rather than when we're about to display an article.
   * Better yet, remove the html parser and find utterances in javascript.
+  * Integrate with the !AccessibilityService on the Android Donut platform.
 
 == General Functionality Ideas ==
 
