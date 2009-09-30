@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 import android.util.Config;
 import android.util.Log;
@@ -48,12 +48,12 @@ import org.apache.http.message.BasicNameValuePair;
 import org.apache.http.NameValuePair;
 import org.apache.http.StatusLine;
 
-import com.google.talkativeapps.talkingrss.ReaderExceptions.UnexpectedException;
-import com.google.talkativeapps.talkingrss.ReaderExceptions.ReaderException;
-import com.google.talkativeapps.talkingrss.ReaderExceptions.NetworkException;
-import com.google.talkativeapps.talkingrss.ReaderExceptions.ProtocolException;
-import com.google.talkativeapps.talkingrss.ReaderExceptions.HttpException;
-import com.google.talkativeapps.talkingrss.ReaderExceptions.HttpForbiddenException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.UnexpectedException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.ReaderException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.NetworkException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.ProtocolException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.HttpException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.HttpForbiddenException;
 
 /** ReaderHttp: Connecting to the unofficial Google Reader API over HTTP. */
 

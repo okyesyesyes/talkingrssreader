@@ -15,7 +15,7 @@
  */
 package com.google.tts;
 
-import com.google.talkativeapps.talkingrss.R;
+import com.googlecode.talkingrssreader.talkingrss.R;
 
 import com.google.tts.ITTS.Stub;
 
@@ -83,9 +83,9 @@ public class TTSService extends Service implements OnCompletionListener {
     }
 	}
 
-	private static final String ACTION = "com.google.talkativeapps.talkingrss.intent.action.USE_SNAPPYTTS";
-	private static final String CATEGORY = "com.google.talkativeapps.talkingrss.intent.category.SNAPPYTTS";
-	private static final String PKGNAME = "com.google.talkativeapps.talkingrss";
+	private static final String ACTION = "com.googlecode.talkingrssreader.talkingrss.intent.action.USE_SNAPPYTTS";
+	private static final String CATEGORY = "com.googlecode.talkingrssreader.talkingrss.intent.category.SNAPPYTTS";
+	private static final String PKGNAME = "com.googlecode.talkingrssreader.talkingrss";
 
 	final RemoteCallbackList<ITTSCallback> mCallbacks = new RemoteCallbackList<ITTSCallback>();
 
@@ -125,7 +125,7 @@ public class TTSService extends Service implements OnCompletionListener {
 		
 		// This should be changed to work using preferences
 		nativeSynth = new MySpeechSynthesis(
-        "/data/data/com.google.talkativeapps.talkingrss/lib/libespeakengine.so");
+        "/data/data/com.googlecode.talkingrssreader.talkingrss/lib/libespeakengine.so");
 
 		// android.os.Debug.waitForDebugger();
 		self = this;

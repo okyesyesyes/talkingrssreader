@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 import android.content.Intent;
 import android.app.Activity;
@@ -44,7 +44,7 @@ import android.widget.EditText;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
 
-import com.google.talkativeapps.talkingrss.ReaderHttp;
+import com.googlecode.talkingrssreader.talkingrss.ReaderHttp;
 
 /* Activity that prompts for an E-mail account and password and logs
  * in using an http request.

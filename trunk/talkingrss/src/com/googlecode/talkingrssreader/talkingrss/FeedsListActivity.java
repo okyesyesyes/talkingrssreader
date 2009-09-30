@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 import android.content.Intent;
 import android.app.Activity;
@@ -73,22 +73,22 @@ import java.util.Comparator;
 import java.text.Collator;
 
 
-import com.google.talkativeapps.talkingrss.ReaderHttp;
-import com.google.talkativeapps.talkingrss.ReaderClientData;
-import com.google.talkativeapps.talkingrss.ReaderClientData.ArticleEntry;
-import com.google.talkativeapps.talkingrss.ReaderClientData.ReaderAtomFeed;
-import com.google.talkativeapps.talkingrss.ReaderClientData.RssFeed;
-import com.google.talkativeapps.talkingrss.ReaderClientData.UserLabel;
+import com.googlecode.talkingrssreader.talkingrss.ReaderHttp;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.ArticleEntry;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.ReaderAtomFeed;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.RssFeed;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.UserLabel;
 
-import com.google.talkativeapps.talkingrss.ReaderExceptions.ReaderException;
-import com.google.talkativeapps.talkingrss.ReaderExceptions.HttpUnauthorizedException;
-import com.google.talkativeapps.talkingrss.HtmlTalker;
-import com.google.talkativeapps.talkingrss.HtmlTalker.HtmlParseException;
-import com.google.talkativeapps.talkingrss.HtmlTalker.Utterance;
-import com.google.talkativeapps.talkingrss.HtmlTalker.SpokenText;
-import com.google.talkativeapps.talkingrss.HtmlTalker.SpeechElement;
-import com.google.talkativeapps.talkingrss.HtmlTalker.SpokenIndication;
-import com.google.talkativeapps.talkingrss.HtmlTalker.EarconIndication;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.ReaderException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.HttpUnauthorizedException;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.HtmlParseException;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.Utterance;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.SpokenText;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.SpeechElement;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.SpokenIndication;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.EarconIndication;
 
 /* Activity that lists your feeds, select one to view by clicking or
    details/unsubscribe with long click. */

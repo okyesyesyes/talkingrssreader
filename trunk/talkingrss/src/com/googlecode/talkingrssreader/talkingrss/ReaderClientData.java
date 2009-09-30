@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 import android.util.Config;
 import android.util.Log;
@@ -55,8 +55,8 @@ import org.xml.sax.SAXException;
 import org.xml.sax.SAXNotRecognizedException;
 import org.xml.sax.SAXNotSupportedException;
 
-import com.google.talkativeapps.talkingrss.ReaderExceptions.UnexpectedException;
-import com.google.talkativeapps.talkingrss.ReaderExceptions.ReaderParseException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.UnexpectedException;
+import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.ReaderParseException;
 
 /** ReaderClientData: basic data model for all retrieved Reader feed
  * information, with atom XMl parser.

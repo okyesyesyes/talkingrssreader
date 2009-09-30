@@ -15,7 +15,7 @@
  */
 package com.google.tts;
 
-import com.google.talkativeapps.talkingrss.R;
+import com.googlecode.talkingrssreader.talkingrss.R;
 
 import java.io.File;
 import java.io.FileOutputStream;

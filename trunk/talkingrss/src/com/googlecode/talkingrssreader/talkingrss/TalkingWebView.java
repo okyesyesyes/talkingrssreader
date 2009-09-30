@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 import android.content.Intent;
 import android.app.Activity;
@@ -85,16 +85,16 @@ import java.text.Collator;
 
 import com.google.tts.TTS;
 
-import com.google.talkativeapps.talkingrss.HtmlTalker;
-import com.google.talkativeapps.talkingrss.HtmlTalker.HtmlParseException;
-import com.google.talkativeapps.talkingrss.HtmlTalker.Utterance;
-import com.google.talkativeapps.talkingrss.HtmlTalker.SpokenText;
-import com.google.talkativeapps.talkingrss.HtmlTalker.SpeechElement;
-import com.google.talkativeapps.talkingrss.HtmlTalker.SpokenIndication;
-import com.google.talkativeapps.talkingrss.HtmlTalker.EarconIndication;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.HtmlParseException;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.Utterance;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.SpokenText;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.SpeechElement;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.SpokenIndication;
+import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.EarconIndication;
 
-import com.google.talkativeapps.talkingrss.KeyHandling;
-import com.google.talkativeapps.talkingrss.KeyHandling.TalkActionHandler;
+import com.googlecode.talkingrssreader.talkingrss.KeyHandling;
+import com.googlecode.talkingrssreader.talkingrss.KeyHandling.TalkActionHandler;
 
 /* Wraps a webView and makes it talk. Handles html parsing and
  * splitting into utterances, tracking speech progress, and
