@@ -15,7 +15,7 @@
  */
 package com.google.tts;
 
-import com.google.talkativeapps.talkingrss.R;
+import com.googlecode.talkingrssreader.talkingrss.R;
 
 import android.content.ComponentName;
 import android.content.Context;
@@ -148,7 +148,7 @@ public class TTS {
 			try {
 				int flags = Context.CONTEXT_INCLUDE_CODE
 						| Context.CONTEXT_IGNORE_SECURITY;
-				Context myContext = ctx.createPackageContext("com.google.talkativeapps.talkingrss",
+				Context myContext = ctx.createPackageContext("com.googlecode.talkingrssreader.talkingrss",
 						flags);
 				Class<?> appClass = myContext.getClassLoader().loadClass(
 						"com.google.tts.ConfigurationManager");
@@ -233,8 +233,8 @@ public class TTS {
 			}
 		};
 
-		Intent intent = new Intent("com.google.talkativeapps.talkingrss.intent.action.USE_SNAPPYTTS");
-		intent.addCategory("com.google.talkativeapps.talkingrss.intent.category.SNAPPYTTS");
+		Intent intent = new Intent("com.googlecode.talkingrssreader.talkingrss.intent.action.USE_SNAPPYTTS");
+		intent.addCategory("com.googlecode.talkingrssreader.talkingrss.intent.category.SNAPPYTTS");
 		// Binding will fail only if the TTS doesn't exist;
 		// the TTSVersionAlert will give users a chance to install
 		// the needed TTS.
@@ -675,8 +675,8 @@ public class TTS {
 	 */
 	public static boolean isInstalled(Context ctx) {
 		PackageManager pm = ctx.getPackageManager();
-		Intent intent = new Intent("com.google.talkativeapps.talkingrss.intent.action.USE_SNAPPYTTS");
-		intent.addCategory("com.google.talkativeapps.talkingrss.intent.category.SNAPPYTTS");
+		Intent intent = new Intent("com.googlecode.talkingrssreader.talkingrss.intent.action.USE_SNAPPYTTS");
+		intent.addCategory("com.googlecode.talkingrssreader.talkingrss.intent.category.SNAPPYTTS");
 		ResolveInfo info = pm.resolveService(intent, 0);
 		if (info == null) {
 			return false;

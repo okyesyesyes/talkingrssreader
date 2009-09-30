@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 import android.content.Intent;
 import android.app.Activity;
@@ -43,12 +43,12 @@ import android.widget.Toast;
 import android.widget.Button;
 import android.widget.EditText;
 
-import com.google.talkativeapps.talkingrss.ReaderHttp;
-import com.google.talkativeapps.talkingrss.ReaderClientData;
-import com.google.talkativeapps.talkingrss.ReaderClientData.ArticleEntry;
-import com.google.talkativeapps.talkingrss.ReaderClientData.ReaderAtomFeed;
-import com.google.talkativeapps.talkingrss.ReaderClientData.RssFeed;
-import com.google.talkativeapps.talkingrss.ReaderClientData.UserLabel;
+import com.googlecode.talkingrssreader.talkingrss.ReaderHttp;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.ArticleEntry;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.ReaderAtomFeed;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.RssFeed;
+import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.UserLabel;
 
 /* Activity that shows the URL of a feed and let's the user
    unsubscribe. */

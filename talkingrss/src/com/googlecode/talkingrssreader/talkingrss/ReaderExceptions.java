@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 /** Collection of exceptions for ReaderHttp and ReaderClientData errors. */
 

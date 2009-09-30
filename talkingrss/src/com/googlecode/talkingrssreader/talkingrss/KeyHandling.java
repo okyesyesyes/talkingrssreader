@@ -20,7 +20,7 @@
  * @author sdoyon@google.com (Stephane Doyon)
  */
 
-package com.google.talkativeapps.talkingrss;
+package com.googlecode.talkingrssreader.talkingrss;
 
 import android.os.Vibrator;
 import android.os.SystemClock;
@@ -32,7 +32,7 @@ import android.view.KeyEvent;
 import android.os.Handler;
 import android.os.Message;
 
-import com.google.talkativeapps.talkingrss.TalkingWebView;
+import com.googlecode.talkingrssreader.talkingrss.TalkingWebView;
 
 /* Key handling code common to ArticleView and Help activities. */
 
