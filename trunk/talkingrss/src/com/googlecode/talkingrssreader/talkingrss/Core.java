@@ -271,7 +271,8 @@ public abstract class Core {
           })
       .create();
     dialog.show();
-    tts.speak(message, 0, null);
+    if (tts != null)
+      tts.speak(message, 0, null);
   }
 
   interface OnProgressCancelListener {
