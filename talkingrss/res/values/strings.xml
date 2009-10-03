@@ -70,7 +70,6 @@ limitations under the License.
     <string name="end_of_page">End of page</string>
     <string name="help_title">Help</string>
     <string name="welcome">Welcome to the Talking RSS Reader</string>
-    <string name="downloading_espeak_data">Downloading TTS data files...</string>
     <string name="login_prompt">Login to Google Reader</string>
     <string name="login_email_hint">E-Mail</string>
     <string name="login_password_hint">Password</string>
@@ -82,4 +81,7 @@ limitations under the License.
     <string name="options_menu_title">Options</string>
     <string name="text_deleted">Deleted</string>
     <string name="edit_text">Edit text</string>
+    <string name="sdcard_not_mounted">SD card not mounted. The text-to-speech requires it.</string>
+    <string name="downloading_espeak_data">Downloading TTS data files...</string>
+    <string name="tts_download_failed">Failed to download TTS data files.</string>
 </resources>

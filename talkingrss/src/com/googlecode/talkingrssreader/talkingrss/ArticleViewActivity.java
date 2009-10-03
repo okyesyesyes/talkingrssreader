@@ -75,10 +75,13 @@ import android.content.IntentFilter;
 import android.preference.PreferenceManager;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.Editor;
+import android.os.Environment;
+
 import java.io.FileInputStream;
 import java.io.InputStreamReader;
 import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.File;
 import java.io.FileWriter;
 import java.io.BufferedWriter;
 import java.text.DateFormat;
@@ -178,7 +181,24 @@ public class ArticleViewActivity extends Activity
     Core.startThreads(handler);
     requestWindowFeature(Window.FEATURE_INDETERMINATE_PROGRESS);
     showWorkingTextOnly(getString(R.string.initializing));
-    if (!ConfigurationManager.allFilesExist()) {
+
+    // The tts uses data files that are stored on the sdcard. First
+    // check that the card is mounted.
+    String sdcardState = Environment.getExternalStorageState();
+    boolean ttsDataPresent = ConfigurationManager.allFilesExist();
+    Log.d(TAG, "external storage state: " + sdcardState);
+    if (!(sdcardState.equals(Environment.MEDIA_MOUNTED)
+          || (sdcardState.equals(Environment.MEDIA_MOUNTED_READ_ONLY)
+              && ttsDataPresent))) {
+      Core.showErrorDialog(this, getString(R.string.sdcard_not_mounted),
+                           new Core.OnErrorDismissListener() {
+                             public void onErrorDismissed() {
+                               finish();
+                             }
+                           });
+      return;
+    }
+    if (!ttsDataPresent) {
       // Handle smoother download and installation of espeak data
       // files to sdcard on first run.
       Log.i(TAG, "espeak data files are missing, attempting download");
@@ -187,9 +207,25 @@ public class ArticleViewActivity extends Activity
         public void run() {
           Log.i(TAG, "Downloading");
           ConfigurationManager.downloadEspeakData();
-          Log.i(TAG, "Download returned, TTS init");
-          Core.tts = tts = new TTS(
-              ArticleViewActivity.this, ttsInitListener, false);
+          Log.i(TAG, "Download returned");
+          handler.post(new Runnable() {
+              public void run() {
+                if (!ConfigurationManager.allFilesExist()) {
+                  Log.i(TAG, "espeak data files still missing");
+                  Core.showErrorDialog(ArticleViewActivity.this,
+                                       getString(R.string.tts_download_failed),
+                                       new Core.OnErrorDismissListener() {
+                                         public void onErrorDismissed() {
+                                           finish();
+                                         }
+                                       });
+                } else {
+                  Log.i(TAG, "espeak-data installed");
+                  Core.tts = tts = new TTS(
+                                           ArticleViewActivity.this, ttsInitListener, false);
+                }
+              }
+            });
         }
       }.start();
     } else {
@@ -200,7 +236,8 @@ public class ArticleViewActivity extends Activity
   protected void onDestroy() {
     if (Config.LOGD) Log.d(TAG, "onDestroy");
     Core.stopThreads();
-    tts.shutdown();
+    if (tts != null)
+      tts.shutdown();
     Core.tts = null;
     super.onDestroy();
   }
@@ -662,7 +699,8 @@ public class ArticleViewActivity extends Activity
   private boolean doKey(KeyEvent event) {
     if (event.getKeyCode() == KeyEvent.KEYCODE_MENU) {
       // Menu replacement for a11y.
-      if (event.getAction() == KeyEvent.ACTION_DOWN
+      if (Core.client.currentFeed != null
+          && event.getAction() == KeyEvent.ACTION_DOWN
           && event.getRepeatCount() == 0)
         showDialog(MENU_DIALOG);
       return true;
