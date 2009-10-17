@@ -34,7 +34,7 @@ import android.preference.ListPreference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 
-/* Activity to configure settings, currently only the speech rate.
+/* Activity to configure settings, currently auto-forward and speech rate.
  *
  * TODO: Speech language would belong here too, but: A) the french
  * accents are mishandled by this espeak for some reason, and B) need
@@ -69,5 +69,13 @@ public class PrefsActivity extends PreferenceActivity {
         = PreferenceManager.getDefaultSharedPreferences(this);
     int rate = Integer.parseInt(prefs.getString("rate_pref", "140"));
     Core.tts.setSpeechRate(rate);
+
+    boolean autoForward = prefs.getBoolean("auto_forward", false);
+    SharedPreferences otherPrefs
+      = getSharedPreferences(Core.PREFS_NAME, MODE_PRIVATE);
+    Editor editor = otherPrefs.edit();
+    editor.putBoolean(Core.PREFS_AUTO_FORWARD, autoForward);
+    editor.commit();
+    Core.autoForwardSetting = autoForward;
   }
 }

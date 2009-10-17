@@ -1,7 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <PreferenceScreen
-        xmlns:android="http://schemas.android.com/apk/res/android">
+    xmlns:android="http://schemas.android.com/apk/res/android">
         
+  <CheckBoxPreference
+    android:key="auto_forward"
+    android:title="@string/auto_forward_pref_title"
+    android:summaryOn="@string/auto_forward_pref_summary_on"
+    android:summaryOff="@string/auto_forward_pref_summary_off"
+    android:defaultValue="false"/>
+
         <ListPreference
                 android:key="rate_pref"
                 android:title="Speech Rate"

@@ -62,7 +62,6 @@ import com.googlecode.talkingrssreader.talkingrss.ReaderClientData.UserLabel;
 import com.googlecode.talkingrssreader.talkingrss.ReaderExceptions.UnexpectedException;
 
 import com.googlecode.talkingrssreader.talkingrss.TalkingWebView;
-import com.googlecode.talkingrssreader.talkingrss.TalkingWebView.SetupCallback;
 
 import com.googlecode.talkingrssreader.talkingrss.HtmlTalker;
 import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.HtmlParseException;
@@ -168,21 +167,27 @@ public class HelpActivity extends Activity
     msgs.speakParseError = getString(R.string.nothing_to_speak);
     msgs.emptyArticle = getString(R.string.empty_article);
 
-    SetupCallback setupCallback = new SetupCallback() {
+    TalkingWebView.Callback callback = new TalkingWebView.Callback() {
         @Override
         public void onParseError(HtmlParseException e) {
           Core.showErrorDialog(HelpActivity.this, e.getMessage(), null);
         }
         @Override
-        public void onViewReady() {
+        public boolean onViewReady() {
           dismissDialog(READYING_DIALOG);
-          talkingWebView.startTalking(true);
+          return true;
+        }
+        @Override
+        public void onUserInteraction() {
+        }
+        @Override
+        public void onReadToBottom() {
         }
       };
 
     talkingWebView = new TalkingWebView(
         webView, Core.tts, vibrator, powerManager,
-        msgs, setupCallback,
+        msgs, callback,
         html, "", null);
 
     Button closeBtn = (Button)findViewById(R.id.help_dismiss);

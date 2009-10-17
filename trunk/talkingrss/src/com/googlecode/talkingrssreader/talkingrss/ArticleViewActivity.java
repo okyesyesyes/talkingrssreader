@@ -106,7 +106,6 @@ import com.googlecode.talkingrssreader.talkingrss.HtmlTalker;
 import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.HtmlParseException;
 
 import com.googlecode.talkingrssreader.talkingrss.TalkingWebView;
-import com.googlecode.talkingrssreader.talkingrss.TalkingWebView.SetupCallback;
 
 import com.googlecode.talkingrssreader.talkingrss.KeyHandling;
 
@@ -137,6 +136,14 @@ public class ArticleViewActivity extends Activity
   private static final int REQUEST_HELP = 3;
   static final String EXTRA_HTML_RESOURCE = "htmlResource";
   private static final int REQUEST_PREFS = 4;
+  // Max number of articles that can be read in a row without user
+  // interaction through auto-forwarding. Just so we don't read
+  // forever.
+  private static final int AUTO_FORWARD_MAX = 15;
+  // If we had user interaction within this period before finishing
+  // reading an article, then we don't auto-forward. We assume the
+  // user may stil want to explore this article.
+  private static final int AUTO_FORWARD_FLOW_THRESHOLD = 15000;
 
   private TTS tts;
   private Vibrator vibrator;
@@ -153,6 +160,11 @@ public class ArticleViewActivity extends Activity
   private ReaderAtomFeed atomFeedBackup;
   // Timestamp of last next/prev article button click, to debounce.
   private long timeLastArticleNavClick;
+  // When auto-forwarding to next article: read this many then stop.
+  private int autoForwardCount;
+  // Time stamp of last user interaction with TalkingWebView, to
+  // decide whether or not to auto forward.
+  private long timeLastTWVUserInteraction;
 
   // Lots of life-cycle logging that I used to debug launch modes and
   // how to start activities from a launcher shell.
@@ -338,9 +350,10 @@ public class ArticleViewActivity extends Activity
             }
           });
     }
-    // First run experience: show help screen.
     SharedPreferences prefs
       = getSharedPreferences(Core.PREFS_NAME, MODE_PRIVATE);
+    Core.autoForwardSetting = prefs.getBoolean(Core.PREFS_AUTO_FORWARD, false);
+    // First run experience: show help screen.
     boolean ranBefore = prefs.getBoolean(Core.PREFS_RAN_BEFORE, false);
     if (!ranBefore)
       launchHelp();
@@ -495,13 +508,14 @@ public class ArticleViewActivity extends Activity
           long now =SystemClock.uptimeMillis();
           if (now - timeLastArticleNavClick > ARTICLE_NAV_DEBOUNCE_DELAY) {
             timeLastArticleNavClick = now;
+            autoForwardCount = 0;
             showNextArticle(false);
           }
         }
       });
     prev_article_btn.setOnClickListener(new Button.OnClickListener() {
         public void onClick(View v) {
-          long now =SystemClock.uptimeMillis();
+          long now = SystemClock.uptimeMillis();
           if (now - timeLastArticleNavClick > ARTICLE_NAV_DEBOUNCE_DELAY) {
             timeLastArticleNavClick = now;
             showPreviousArticle(false);
@@ -524,23 +538,39 @@ public class ArticleViewActivity extends Activity
     msgs.speakParseError = getString(R.string.nothing_to_speak);
     msgs.emptyArticle = getString(R.string.empty_article);
 
-    SetupCallback setupCallback = new SetupCallback() {
+    TalkingWebView.Callback callback = new TalkingWebView.Callback() {
         @Override
         public void onParseError(HtmlParseException e) {
           Core.showErrorDialog(ArticleViewActivity.this, e.getMessage(), null);
         }
         @Override
-        public void onViewReady() {
+        public boolean onViewReady() {
+          timeLastTWVUserInteraction = 0;
           // If we're in foreground or the command comes from a media
           // button, then start reading out loud.
-          if (hasWindowFocus() || isMediaCommand)
-            talkingWebView.startTalking(true);
+          return hasWindowFocus() || isMediaCommand;
+        }
+        @Override
+        public void onUserInteraction() {
+          timeLastTWVUserInteraction = SystemClock.uptimeMillis();          
+        }
+        @Override
+        public void onReadToBottom() {
+          if (Core.autoForwardSetting && autoForwardCount < AUTO_FORWARD_MAX) {
+            ++autoForwardCount;
+            long now = SystemClock.uptimeMillis();
+            if (now - timeLastTWVUserInteraction
+                > AUTO_FORWARD_FLOW_THRESHOLD) {
+              tts.speak(getString(R.string.next_article), 1, null);
+              showNextArticle(false);
+            }
+          }
         }
       };
 
     talkingWebView = new TalkingWebView(
         webView, tts, vibrator, powerManager,
-        msgs, setupCallback,
+        msgs, callback,
         htmlInput, originalLink, baseUrl);
 
     updateArticleIcons();

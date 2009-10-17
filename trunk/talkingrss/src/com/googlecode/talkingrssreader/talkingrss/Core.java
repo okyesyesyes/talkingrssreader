@@ -120,6 +120,7 @@ public abstract class Core {
   static final String PREFS_CLIENT_LOGIN_EMAIL = "client_login_email";
   static final String PREFS_CLIENT_LOGIN_AUTH_TOKEN
     = "client_login_auth_token";
+  static final String PREFS_AUTO_FORWARD = "auto_forward";
 
   // Subactivity codes. We can call the login subactivity from any
   // activity (when the auth token expires), so the following request
@@ -132,6 +133,8 @@ public abstract class Core {
   static final String EXTRA_LOGIN_ERROR = "error";
 
   static Context context;
+
+  static boolean autoForwardSetting;
 
   static String getString(int resourceId) {
     if (context == null)

@@ -107,9 +107,12 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
   private static final long[] SCROLLED_VIBR_PATTERN = {0, 30};
   private static final long[] MOVED_VIBR_PATTERN = SCROLLED_VIBR_PATTERN;
 
-  public interface SetupCallback {
+  public interface Callback {
     void onParseError(HtmlParseException e);
-    void onViewReady();
+    // If onViewReady() returns true, then we start speaking the html.
+    boolean onViewReady();
+    void onUserInteraction();
+    void onReadToBottom();
   }
 
   public static class SpokenMessages {
@@ -125,7 +128,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
   private Vibrator vibrator;
   private PowerManager powerManager;
   private SpokenMessages messages;
-  private SetupCallback setupCallback;
+  private Callback callback;
   private String htmlInput;
   private String htmlFooter;  // Shown but not spoken.
   private String baseUrl;
@@ -133,14 +136,14 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
   public TalkingWebView(WebView webView, TTS tts,
                         Vibrator vibrator, PowerManager powerManager,
                         SpokenMessages messages,
-                        SetupCallback setupCallback,
+                        Callback callback,
                         String htmlInput, String htmlFooter, String baseUrl) {
     this.webView = webView;
     this.tts = tts;
     this.vibrator = vibrator;
     this.powerManager = powerManager;
     this.messages = messages;
-    this.setupCallback = setupCallback;
+    this.callback = callback;
     this.htmlInput = htmlInput;
     this.htmlFooter = htmlFooter;
     this.baseUrl = baseUrl;
@@ -335,7 +338,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
         if (isDead)
           return;
         if (htmlTalker == null) {
-          setupCallback.onParseError(pendingException);
+          callback.onParseError(pendingException);
         } else {
           TalkingWebView.this.htmlTalker = htmlTalker;
           String outHtml = htmlTalker.fullHtml.toString();
@@ -368,7 +371,8 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
           webView.requestFocus();
 
           currentUtterance = 0;
-          setupCallback.onViewReady();
+          if (callback.onViewReady())
+            _startTalking(true);
         }
       }
     }.execute(htmlInput);
@@ -388,6 +392,10 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
 
   // Starts speaking at the currentUtterance.
   public void startTalking(boolean continueTalking) {
+    callback.onUserInteraction();
+    _startTalking(continueTalking);
+  }
+  public void _startTalking(boolean continueTalking) {
     this.continueTalking = continueTalking;
     if (!speakChecks())
       return;
@@ -484,13 +492,15 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
         currentUtterance = htmlTalker.utterances.size();
         tts.speak(messages.endOfPage, 1, null);
         isTalking = false;
+        if (continueTalking)
+          callback.onReadToBottom();
       } else {
         if (!continueTalking) {
           if (Config.LOGD) Log.d(TAG, String.format("Done just one utterance, now at %d", currentUtterance));
           isTalking = false;
         } else {
           if (Config.LOGD) Log.d(TAG, String.format("Speaking next utterance: %d", currentUtterance));
-          startTalking(true);
+          _startTalking(true);
         }
       }
     }
