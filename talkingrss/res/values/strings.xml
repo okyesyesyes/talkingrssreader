@@ -85,7 +85,7 @@ limitations under the License.
     <string name="downloading_espeak_data">Downloading TTS data files...</string>
     <string name="tts_download_failed">Failed to download TTS data files.</string>
     <string name="next_article">Next article</string>
-    <string name="auto_forward_pref_title">Auto-forward to next article</string>
+    <string name="auto_forward_pref_title">Auto-forward</string>
     <string name="auto_forward_pref_summary_on">When done reading an article, automatically start speaking the next one.</string>
     <string name="auto_forward_pref_summary_off">Require user action to go to the next article.</string>
 </resources>
