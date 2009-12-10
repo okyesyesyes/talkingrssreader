@@ -59,6 +59,8 @@ AudioSystem::audio_format audioTrack_format;
 int audioTrack_channelCount;
 
 
+int sdk_version = 0;
+
 static pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
 static pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
 // Audio data produced by the TTS synthesis callback and consumed by
@@ -185,7 +187,11 @@ void prepAudioTrack(uint32_t rate, AudioSystem::audio_format format, int channel
     audioTrack_sampleRate = rate;
     audioTrack_format = format;
     audioTrack_channelCount = channel;
-    audout = new AudioTrack(AudioSystem::MUSIC, rate, format, channel, rate/4, 0, audioCallback, 0, 0);
+    // Android 2.0 AudioTrack API change: pass a channel mask instead
+    // of number of channels. AudioSystem::CHANNEL_OUT_MONO is 0x4.
+    int channels = (sdk_version >= 5) ? 0x4 : 1;
+    LOGI("sdk_version %d channels %d", sdk_version, channels);
+    audout = new AudioTrack(AudioSystem::MUSIC, rate, format, channels, rate/4, 0, audioCallback, 0, 0);
     if (audout->initCheck() != NO_ERROR) {
       LOGE("AudioTrack error");
     } else {
@@ -247,7 +253,7 @@ static bool ttsSynthDoneCB(void * userdata, uint32_t rate, AudioSystem::audio_fo
 
 static void
 com_google_tts_SpeechSynthesis_native_setup(
-    JNIEnv *env, jobject thiz, jobject weak_this, jstring nativeSoLib)
+					    JNIEnv *env, jobject thiz, jobject weak_this, jstring nativeSoLib, jint sdk_version_arg)
 {
     jclass clazz = env->GetObjectClass(thiz);
     mCallbackData.tts_class = (jclass)env->NewGlobalRef(clazz);
@@ -272,6 +278,8 @@ com_google_tts_SpeechSynthesis_native_setup(
     nativeSynthInterface = (*get_TtsSynthInterface)();
 
     nativeSynthInterface->init(ttsSynthDoneCB);
+
+    sdk_version = sdk_version_arg;
 LOGI("Setup complete");
 }
 
@@ -481,7 +489,7 @@ static JNINativeMethod gMethods[] = {
         (void*)com_google_tts_SpeechSynthesis_shutdown
     },
     {   "native_setup",
-        "(Ljava/lang/Object;Ljava/lang/String;)V",
+        "(Ljava/lang/Object;Ljava/lang/String;I)V",
         (void*)com_google_tts_SpeechSynthesis_native_setup
     },
     {   "native_finalize",     

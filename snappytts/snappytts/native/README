@@ -22,8 +22,9 @@ proceeding.
 
 Copy external/espeak to the "external" directory in the Android source,
 
-*Note you now need to unzip external/espeak-1.39-source.zip and apply
-*the two patches found in external/*.diff.
+*Note you now need to unzip external/espeak-1.39-source.zip,
+*rename to just espeak,
+*and apply the two patches found in external/*.diff.
 
 copy frameworks/tts to the "frameworks" directory in the Android source,
 
@@ -32,6 +33,9 @@ copy frameworks/tts to the "frameworks" directory in the Android source,
 then create
 a java directory under frameworks/tts and copy SpeechSynthesis.java (from
 MY_SVN_DIRECTORY/tts/src/com/google/tts) into frameworks/tts/java.
+
+*You may also need an empty resources/ directory under frameworks/tts.
+
 To recompile just those directories, assuming you have run
 "source build/envsetup.sh" in your bash shell, you an just type:
 
