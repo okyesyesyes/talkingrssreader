@@ -305,8 +305,7 @@ public class ArticleViewActivity extends Activity
   public void onNewIntent(Intent intent) {
     if (Config.LOGD) Log.d(TAG, "onNewIntent");
     // App re-entered, just start reading.
-    if (talkingWebView != null)
-      talkingWebView.startTalking(true);
+    startTalking();
   }
 
   @Override
@@ -501,6 +500,7 @@ public class ArticleViewActivity extends Activity
     setContentView(R.layout.article_view);
     Button next_article_btn = (Button)findViewById(R.id.art_next);
     Button prev_article_btn = (Button)findViewById(R.id.art_prev);
+    Button pause_btn = (Button)findViewById(R.id.pause_btn);
     next_article_btn.setOnClickListener(new Button.OnClickListener() {
         public void onClick(View v) {
           // It's easy to double-click by mistake and skip an article,
@@ -520,6 +520,11 @@ public class ArticleViewActivity extends Activity
             timeLastArticleNavClick = now;
             showPreviousArticle(false);
           }
+        }
+      });
+    pause_btn.setOnClickListener(new Button.OnClickListener() {
+        public void onClick(View v) {
+          doPause();
         }
       });
     if (Core.client.currentIndex == 0)
@@ -555,6 +560,10 @@ public class ArticleViewActivity extends Activity
           timeLastTWVUserInteraction = SystemClock.uptimeMillis();          
         }
         @Override
+        public void onTalking(boolean started) {
+          showPauseButton(started);
+        }
+        @Override
         public void onReadToBottom() {
           if (Core.autoForwardSetting && autoForwardCount < AUTO_FORWARD_MAX) {
             ++autoForwardCount;
@@ -581,6 +590,9 @@ public class ArticleViewActivity extends Activity
   private void updateArticleIcons() {
     if (talkingWebView == null)
       return;
+    // This has been replaced with the play/pause button.
+    // TODO: find a new place where to show icons.
+    /*
     ArticleEntry article = getCurrentArticle();
     if (article == null)
       return;
@@ -591,8 +603,32 @@ public class ArticleViewActivity extends Activity
       frame.setForeground(getResources().getDrawable(R.drawable.star_on));
       layout.addView(frame);
     }
+    */
   }
 
+  void showPauseButton(boolean playing) {
+    Button pause_btn = (Button)findViewById(R.id.pause_btn);
+    if (playing) {
+      pause_btn.setCompoundDrawablesWithIntrinsicBounds(
+          0, R.drawable.ic_media_pause, 0, 0);
+      pause_btn.setText(R.string.pause);
+    } else {
+      pause_btn.setCompoundDrawablesWithIntrinsicBounds(
+          0, R.drawable.ic_media_play, 0, 0);
+      pause_btn.setText(R.string.play);
+    }
+  }
+  void doPause() {
+    if (isTalking())
+      stopTalking();
+    else
+      startTalking();
+  }
+
+  private void startTalking() {
+    if (talkingWebView != null)
+      talkingWebView.startTalking(true);
+  }
   private void stopTalking() {
     if (talkingWebView != null)
       talkingWebView.stopTalking();
@@ -804,7 +840,8 @@ public class ArticleViewActivity extends Activity
                   dismissDialog(MENU_DIALOG);
                 return true;
               }
-              if (event.getKeyCode() == KeyEvent.KEYCODE_CALL)
+              if (event.getKeyCode() == KeyEvent.KEYCODE_CALL
+                  || event.getKeyCode() == KeyEvent.KEYCODE_SEARCH)
                 return true;
               return false;
             }

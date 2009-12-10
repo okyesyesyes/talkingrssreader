@@ -63,7 +63,9 @@ public abstract class KeyHandling {
       default:
         return false;
       // Some phones don't have a CAMERA button, so we'll use CALL.
+      // And of course some don't have CALL, so use SEARCH too.
       case KeyEvent.KEYCODE_CALL:
+      case KeyEvent.KEYCODE_SEARCH:
         if (down && event.getRepeatCount() == 0) {
           callIsPressed = true;
           if (talkAction != null) {
