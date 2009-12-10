@@ -180,6 +180,8 @@ public class HelpActivity extends Activity
         @Override
         public void onUserInteraction() {
         }
+        public void onTalking(boolean started) {
+        }
         @Override
         public void onReadToBottom() {
         }

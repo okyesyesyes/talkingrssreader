@@ -88,4 +88,6 @@ limitations under the License.
     <string name="auto_forward_pref_title">Auto-forward</string>
     <string name="auto_forward_pref_summary_on">When done reading an article, automatically start speaking the next one.</string>
     <string name="auto_forward_pref_summary_off">Require user action to go to the next article.</string>
+    <string name="pause">Pause</string>
+    <string name="play">Play</string>
 </resources>

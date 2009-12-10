@@ -262,7 +262,8 @@ public abstract class Core {
             @Override
             public boolean onKey(DialogInterface dialog,
                                  int keyCode, KeyEvent event) {
-              if (keyCode == KeyEvent.KEYCODE_CALL) {
+              if (keyCode == KeyEvent.KEYCODE_CALL
+                  || keyCode == KeyEvent.KEYCODE_SEARCH) {
                 if (event.getAction() == KeyEvent.ACTION_DOWN
                     && event.getRepeatCount() == 0) {
                   tts.speak(message, 0, null);
@@ -300,7 +301,8 @@ public abstract class Core {
         @Override
         public boolean onKey(DialogInterface dialog,
                              int keyCode, KeyEvent event) {
-          if (keyCode == KeyEvent.KEYCODE_CALL) {
+          if (keyCode == KeyEvent.KEYCODE_CALL
+              || keyCode == KeyEvent.KEYCODE_SEARCH) {
             if (event.getAction() == KeyEvent.ACTION_DOWN
                 && event.getRepeatCount() == 0) {
               tts.speak(message, 0, null);

@@ -37,13 +37,13 @@ limitations under the License.
             android:drawableLeft="@drawable/ic_menu_back"
             android:text="@string/art_prev"
         />
-        <LinearLayout android:id="@+id/mid_icons"
-            android:orientation="horizontal"
+        <Button android:id="@+id/pause_btn"
+            android:layout_centerHorizontal="true"
             android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_centerHorizontal="true"
-            >
-        </LinearLayout>
+            android:drawableTop="@drawable/ic_media_pause"
+            android:text="@string/pause"
+        />
         <Button android:id="@+id/art_next"
             android:layout_alignParentRight="true"
             android:layout_width="wrap_content"

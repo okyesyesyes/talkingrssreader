@@ -112,6 +112,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
     // If onViewReady() returns true, then we start speaking the html.
     boolean onViewReady();
     void onUserInteraction();
+    void onTalking(boolean started); // False meaning stopped before bottom.
     void onReadToBottom();
   }
 
@@ -403,6 +404,8 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
       // Wrap to top.
       currentUtterance = 0;
     }
+    if (!isTalking)
+      callback.onTalking(true);
     isTalking = true;
     if (Config.LOGD) Log.d(TAG, String.format("StartTalking utterance %d", currentUtterance));
     speakCompoundUtterance(currentUtterance);
@@ -433,6 +436,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
     if (isTalking) {
       tts.stop();
       isTalking = false;
+      callback.onTalking(false);
       if (Config.LOGD) Log.d(TAG, String.format("Stopped talking during utterance %d", currentUtterance));
     }
   }
@@ -468,6 +472,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
               if (Config.LOGD) Log.d(TAG, String.format("speechCallback %d, interrupted %s", user_arg, String.valueOf(interrupted)));
               if (interrupted) {
                 isTalking = false;
+                callback.onTalking(false);
                 if (Config.LOGD) Log.d(TAG, String.format("Interrupted talking during utterance %d", currentUtterance));
               } else {
                 speechProgress();
@@ -492,12 +497,14 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
         currentUtterance = htmlTalker.utterances.size();
         tts.speak(messages.endOfPage, 1, null);
         isTalking = false;
+        callback.onTalking(false);
         if (continueTalking)
           callback.onReadToBottom();
       } else {
         if (!continueTalking) {
           if (Config.LOGD) Log.d(TAG, String.format("Done just one utterance, now at %d", currentUtterance));
           isTalking = false;
+          callback.onTalking(false);
         } else {
           if (Config.LOGD) Log.d(TAG, String.format("Speaking next utterance: %d", currentUtterance));
           _startTalking(true);
