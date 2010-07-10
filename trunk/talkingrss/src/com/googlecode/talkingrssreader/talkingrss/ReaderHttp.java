@@ -62,7 +62,9 @@ public class ReaderHttp {
 
   private static final String AGENT_STRING = "Talkingrss-0.1";
 
-  private static final String COOKIE_NAME = "SID";
+  private static final String AUTHORIZATION_HEADER_NAME = "Authorization";
+  private static final String AUTHORIZATION_HEADER_VALUE_PREFIX
+    = "GoogleLogin auth=";
   private static final String GOOGLE_LOGIN_URL =
       "https://www.google.com/accounts/ClientLogin";
   private static final String READER_BASE_URL
@@ -95,7 +97,7 @@ public class ReaderHttp {
   private static final boolean verbose = false;
 
   private String clientParam;
-  private String authToken;  // non-c18n SID
+  private String authToken;  // ClientLogin.
   private String apiToken;
   ThreadLocal<HttpClient> httpClientPerThread
       = new ThreadLocal<HttpClient>();
@@ -172,15 +174,15 @@ public class ReaderHttp {
   // Prepares and performs a POST request.
   private InputStream doPost(String url,
                                     ArrayList<NameValuePair> params,
-                                    boolean addAuthCookieAndApiToken)
+                                    boolean addAuthHeaderAndApiToken)
       throws ReaderException {
     if (verbose)
       Log.d(TAG, url);
     HttpPost http_post = new HttpPost(url);
-    if (addAuthCookieAndApiToken) {
-      String cookie = String.format("%s=%s; domain=.google.com; path=/",
-                                    COOKIE_NAME, authToken);
-      http_post.addHeader("Cookie", cookie);
+    if (addAuthHeaderAndApiToken) {
+      http_post.addHeader(
+          AUTHORIZATION_HEADER_NAME,
+          AUTHORIZATION_HEADER_VALUE_PREFIX + authToken);
       if (params != null) {
         params.add(new BasicNameValuePair("client", AGENT_STRING));
         params.add(new BasicNameValuePair("T", apiToken));
@@ -220,9 +222,9 @@ public class ReaderHttp {
     if (verbose)
       Log.d(TAG, url);
     HttpGet http_get = new HttpGet(url);
-    String cookie = String.format("%s=%s; domain=.google.com; path=/",
-                                  COOKIE_NAME, authToken);
-    http_get.addHeader("Cookie", cookie);
+    http_get.addHeader(
+        AUTHORIZATION_HEADER_NAME,
+        AUTHORIZATION_HEADER_VALUE_PREFIX + authToken);
     return doHttpRequest(http_get);
   }
 
@@ -268,11 +270,11 @@ public class ReaderHttp {
     }
     long now = SystemClock.uptimeMillis();
     if (Config.LOGD) Log.d(TAG, String.format("Login request took %dms", now-startTime));
-    int index = reply.indexOf("SID=");
+    int index = reply.indexOf("Auth=");
     if (index > -1) {
       int end = reply.indexOf('\n', index);
-      if (end > index + 4) {
-        String authToken = reply.substring(index + 4, end);
+      if (end > index + 5) {
+        String authToken = reply.substring(index + 5, end);
         return authToken;
       }
     }
