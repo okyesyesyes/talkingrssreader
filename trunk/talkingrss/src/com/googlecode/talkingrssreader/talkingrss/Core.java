@@ -84,7 +84,7 @@ import java.util.ArrayList;
 import java.util.concurrent.LinkedBlockingQueue;
 import java.text.Collator;
 
-import com.google.tts.TTS;
+import android.speech.tts.TextToSpeech;
 
 import com.googlecode.talkingrssreader.talkingrss.ReaderHttp;
 import com.googlecode.talkingrssreader.talkingrss.ReaderClientData;
@@ -109,7 +109,7 @@ import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.EarconIndication;
 public abstract class Core {
   private static final String TAG = "talkingrss-core";
 
-  static TTS tts;
+  static TextToSpeech tts;
   static KeyguardManager keyguardManager;
 
   static ReaderHttp http = new ReaderHttp();
@@ -207,7 +207,7 @@ public abstract class Core {
                 text = hint.toString();
             }
             if (text.length() != 0)
-              Core.tts.speak(text, enqueue, null);
+              tts.speak(text, enqueue, null);
           }
         }
       };

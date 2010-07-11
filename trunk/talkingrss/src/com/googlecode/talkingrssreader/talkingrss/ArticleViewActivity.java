@@ -90,8 +90,7 @@ import java.util.Calendar;
 import java.util.Comparator;
 import java.text.Collator;
 
-import com.google.tts.TTS;
-import com.google.tts.ConfigurationManager;
+import android.speech.tts.TextToSpeech;
 
 import com.googlecode.talkingrssreader.talkingrss.ReaderHttp;
 import com.googlecode.talkingrssreader.talkingrss.ReaderClientData;
@@ -145,7 +144,7 @@ public class ArticleViewActivity extends Activity
   // user may stil want to explore this article.
   private static final int AUTO_FORWARD_FLOW_THRESHOLD = 15000;
 
-  private TTS tts;
+  private TextToSpeech tts;
   private Vibrator vibrator;
   private PowerManager powerManager;
 
@@ -196,12 +195,13 @@ public class ArticleViewActivity extends Activity
 
     // The tts uses data files that are stored on the sdcard. First
     // check that the card is mounted.
+    // TODO: svox way...
     String sdcardState = Environment.getExternalStorageState();
-    boolean ttsDataPresent = ConfigurationManager.allFilesExist();
+    //boolean ttsDataPresent = ConfigurationManager.allFilesExist();
     Log.d(TAG, "external storage state: " + sdcardState);
     if (!(sdcardState.equals(Environment.MEDIA_MOUNTED)
           || (sdcardState.equals(Environment.MEDIA_MOUNTED_READ_ONLY)
-              && ttsDataPresent))) {
+              /*&& ttsDataPresent*/))) {
       Core.showErrorDialog(this, getString(R.string.sdcard_not_mounted),
                            new Core.OnErrorDismissListener() {
                              public void onErrorDismissed() {
@@ -210,39 +210,7 @@ public class ArticleViewActivity extends Activity
                            });
       return;
     }
-    if (!ttsDataPresent) {
-      // Handle smoother download and installation of espeak data
-      // files to sdcard on first run.
-      Log.i(TAG, "espeak data files are missing, attempting download");
-      showWorkingTextOnly(getString(R.string.downloading_espeak_data));
-      new Thread() {
-        public void run() {
-          Log.i(TAG, "Downloading");
-          ConfigurationManager.downloadEspeakData();
-          Log.i(TAG, "Download returned");
-          handler.post(new Runnable() {
-              public void run() {
-                if (!ConfigurationManager.allFilesExist()) {
-                  Log.i(TAG, "espeak data files still missing");
-                  Core.showErrorDialog(ArticleViewActivity.this,
-                                       getString(R.string.tts_download_failed),
-                                       new Core.OnErrorDismissListener() {
-                                         public void onErrorDismissed() {
-                                           finish();
-                                         }
-                                       });
-                } else {
-                  Log.i(TAG, "espeak-data installed");
-                  Core.tts = tts = new TTS(
-                                           ArticleViewActivity.this, ttsInitListener, false);
-                }
-              }
-            });
-        }
-      }.start();
-    } else {
-      Core.tts = tts = new TTS(this, ttsInitListener, false);
-    }
+    Core.tts = tts = new TextToSpeech(this, ttsInitListener);
   }
   @Override
   protected void onDestroy() {
@@ -254,14 +222,28 @@ public class ArticleViewActivity extends Activity
     super.onDestroy();
   }
 
-  private TTS.InitListener ttsInitListener = new TTS.InitListener() {
-      public void onInit(int version) {
+  private TextToSpeech.OnInitListener ttsInitListener
+    = new TextToSpeech.OnInitListener() {
+      public void onInit(int status) {
+        if (Config.LOGD) Log.d(TAG, String.format("TextToSpeech onInit: %d", status));
         handler.post(new Runnable() {
             public void run() {
               tts.addEarcon(
                   "breakflow",
                   ArticleViewActivity.class.getPackage().getName(),
                   R.raw.woowoo);
+              tts.addEarcon(
+                  "TICK",
+                  ArticleViewActivity.class.getPackage().getName(),
+                  R.raw.tick_snd);
+              tts.addEarcon(
+                  "TOCK",
+                  ArticleViewActivity.class.getPackage().getName(),
+                  R.raw.tock_snd);
+              tts.addEarcon(
+                  "SILENCE",
+                  ArticleViewActivity.class.getPackage().getName(),
+                  R.raw.slnc_snd);
               tts.speak(getString(R.string.app_name), 1, null);
               init();  // App initialization.
             }
