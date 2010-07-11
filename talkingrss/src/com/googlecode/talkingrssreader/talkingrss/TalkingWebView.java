@@ -82,8 +82,9 @@ import java.util.Date;
 import java.util.Calendar;
 import java.util.Comparator;
 import java.text.Collator;
+import java.util.HashMap;
 
-import com.google.tts.TTS;
+import android.speech.tts.TextToSpeech;
 
 import com.googlecode.talkingrssreader.talkingrss.HtmlTalker;
 import com.googlecode.talkingrssreader.talkingrss.HtmlTalker.HtmlParseException;
@@ -101,7 +102,9 @@ import com.googlecode.talkingrssreader.talkingrss.KeyHandling.TalkActionHandler;
  * synchronizing scrolling by communicating with javascript in the
  * webView. */
 
-public class TalkingWebView implements KeyHandling.TalkActionHandler {
+public class TalkingWebView
+  implements KeyHandling.TalkActionHandler,
+             TextToSpeech.OnUtteranceCompletedListener {
   private static final String TAG = "talkingrss-webv";
 
   private static final long[] SCROLLED_VIBR_PATTERN = {0, 30};
@@ -125,7 +128,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
   }
 
   private WebView webView;
-  private TTS tts;
+  private TextToSpeech tts;
   private Vibrator vibrator;
   private PowerManager powerManager;
   private SpokenMessages messages;
@@ -134,7 +137,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
   private String htmlFooter;  // Shown but not spoken.
   private String baseUrl;
 
-  public TalkingWebView(WebView webView, TTS tts,
+  public TalkingWebView(WebView webView, TextToSpeech tts,
                         Vibrator vibrator, PowerManager powerManager,
                         SpokenMessages messages,
                         Callback callback,
@@ -149,6 +152,8 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
     this.htmlFooter = htmlFooter;
     this.baseUrl = baseUrl;
 
+    this.tts.setOnUtteranceCompletedListener(this);
+
     setup();
   }
 
@@ -161,8 +166,10 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
   // Exception returned from background thread.
   private volatile HtmlParseException pendingException;
   private int currentUtterance = -1;
-  private boolean isTalking;
+  private int lastEnqueuedUtterance = -1;
   private int ttsCallbackUtteranceId;  // unique id per speak() request.
+  private int startCallbackUtteranceId;
+  private boolean isTalking;
   private boolean continueTalking;  // Auto-forrward to next utterance.
   private boolean skippingBackwards;  // Speaking previous sentence.
   // Set to true when we get the onload callback from javascript.
@@ -172,6 +179,7 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
 
   // Called when we are discarded.
   public void kill() {
+    this.tts.setOnUtteranceCompletedListener(null);
     stopTalking();
     isDead = true;
     if (htmlParseTask != null) {
@@ -406,9 +414,20 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
     }
     if (!isTalking)
       callback.onTalking(true);
+    if (!isTalking) {
+      startCallbackUtteranceId = ttsCallbackUtteranceId;
+      lastEnqueuedUtterance = -1;
+    }
     isTalking = true;
     if (Config.LOGD) Log.d(TAG, String.format("StartTalking utterance %d", currentUtterance));
-    speakCompoundUtterance(currentUtterance);
+    if (currentUtterance > lastEnqueuedUtterance) {
+      speakCompoundUtterance(currentUtterance);
+      lastEnqueuedUtterance = currentUtterance;
+    }
+    if (currentUtterance+1 < htmlTalker.utterances.size()) {
+      speakCompoundUtterance(currentUtterance + 1);
+      lastEnqueuedUtterance = currentUtterance + 1;
+    }
     // Show visual indication of this utterance.
     showSpoken();
   }
@@ -439,48 +458,54 @@ public class TalkingWebView implements KeyHandling.TalkActionHandler {
       callback.onTalking(false);
       if (Config.LOGD) Log.d(TAG, String.format("Stopped talking during utterance %d", currentUtterance));
     }
+    lastEnqueuedUtterance = -1;
   }
 
   // Speak the current utterance from htmlTalker.
   private void speakCompoundUtterance(int utterance_index) {
     Utterance utt = htmlTalker.utterances.get(utterance_index);
-    for (int i= 0; i < utt.size(); ++i) {
+    for (int i = 0; i < utt.size(); ++i) {
       SpeechElement e = utt.get(i);
+      HashMap<String, String> params = null;
       if (e instanceof EarconIndication) {
         String name = e.toString();
         if (Config.LOGD) Log.d(TAG, "earcon " + name);
-        tts.playEarcon(name, 1, null);
+        tts.playEarcon(name, 1, params);
       } else {
         String toSpeak = e.toString();
         if (Config.LOGD) Log.d(TAG, "toSpeak: "+toSpeak);
-        tts.speak(toSpeak, 1, null);
+        tts.speak(toSpeak, 1, params);
+      }
+      if (i == utt.size() - 1) {
+        // Last element for this utterance.
+        params = new HashMap<String, String>();
+        params.put(TextToSpeech.Engine.KEY_PARAM_UTTERANCE_ID,
+                   String.valueOf(++ttsCallbackUtteranceId));
+        if (Config.LOGD) Log.d(TAG, "Last element");
+        tts.speak("", 1, params);
       }
     }
-    tts.enqueueCallback(speechCallback, ++ttsCallbackUtteranceId);
-    // and we could continue enqueuing...
     keepUnlocked();
   }
 
-  private TTS.TTSUserCallback speechCallback = new TTS.TTSUserCallback() {
-      public void onCompletion(final boolean interrupted, final int user_arg) {
-        handler.post(new Runnable() {
-            public void run() {
-              if (user_arg != ttsCallbackUtteranceId)
-                return;  // an older utterance.
-              if (!isTalking)
-                return;
-              if (Config.LOGD) Log.d(TAG, String.format("speechCallback %d, interrupted %s", user_arg, String.valueOf(interrupted)));
-              if (interrupted) {
-                isTalking = false;
-                callback.onTalking(false);
-                if (Config.LOGD) Log.d(TAG, String.format("Interrupted talking during utterance %d", currentUtterance));
-              } else {
-                speechProgress();
-              }
-            }
-          });
-      }
-    };
+  public void onUtteranceCompleted(String utteranceIdString) {
+    if (Config.LOGD) Log.d(TAG, "onUtteranceCompleted: " + utteranceIdString);
+    if (isDead)
+      return;
+    final int utteranceId = Integer.parseInt(utteranceIdString);
+    handler.post(new Runnable() {
+        public void run() {
+          if (utteranceId < startCallbackUtteranceId)
+            return;  // an older utterance.
+          if (!isTalking)
+            return;
+          currentUtterance += utteranceId - startCallbackUtteranceId;
+          if (Config.LOGD) Log.d(TAG, String.format("onUtteranceCompleted: %d -> %d", utteranceId, currentUtterance));
+          startCallbackUtteranceId = utteranceId;
+          speechProgress();
+        }
+      });
+  }
 
   private void speechProgress() {
     if (!isTalking)
