@@ -28,6 +28,9 @@ toasts. There is a talking !ListView, adapted by using an
 required that I reimplement the menu with a !ListView, because the
 built-in menu lacks a callback on item focus change.
 
+The following is no longer true: as of version 1.5.0 (July 2010) the
+Android built-in text-to-speech service is now used.
+
 This app relies on a modified version of the TTS for Android package
 from
 [http://eyes-free.googlecode.com the Eyes-free project],
