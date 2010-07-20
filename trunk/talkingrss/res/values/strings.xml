@@ -82,8 +82,6 @@ limitations under the License.
     <string name="text_deleted">Deleted</string>
     <string name="edit_text">Edit text</string>
     <string name="sdcard_not_mounted">SD card not mounted. The text-to-speech requires it.</string>
-    <string name="downloading_espeak_data">Downloading TTS data files...</string>
-    <string name="tts_download_failed">Failed to download TTS data files.</string>
     <string name="next_article">Next article</string>
     <string name="auto_forward_pref_title">Auto-forward</string>
     <string name="auto_forward_pref_summary_on">When done reading an article, automatically start speaking the next one.</string>

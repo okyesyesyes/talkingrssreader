@@ -143,6 +143,7 @@ public class ArticleViewActivity extends Activity
   // reading an article, then we don't auto-forward. We assume the
   // user may stil want to explore this article.
   private static final int AUTO_FORWARD_FLOW_THRESHOLD = 15000;
+  private static final int REQUEST_CHECK_TTS_DATA = 5;
 
   private TextToSpeech tts;
   private Vibrator vibrator;
@@ -195,9 +196,7 @@ public class ArticleViewActivity extends Activity
 
     // The tts uses data files that are stored on the sdcard. First
     // check that the card is mounted.
-    // TODO: svox way...
     String sdcardState = Environment.getExternalStorageState();
-    //boolean ttsDataPresent = ConfigurationManager.allFilesExist();
     Log.d(TAG, "external storage state: " + sdcardState);
     if (!(sdcardState.equals(Environment.MEDIA_MOUNTED)
           || (sdcardState.equals(Environment.MEDIA_MOUNTED_READ_ONLY)
@@ -210,7 +209,9 @@ public class ArticleViewActivity extends Activity
                            });
       return;
     }
-    Core.tts = tts = new TextToSpeech(this, ttsInitListener);
+    Intent intent = new Intent();
+    intent.setAction(TextToSpeech.Engine.ACTION_CHECK_TTS_DATA);
+    startActivityForResult(intent, REQUEST_CHECK_TTS_DATA);
   }
   @Override
   protected void onDestroy() {
@@ -560,6 +561,7 @@ public class ArticleViewActivity extends Activity
       };
 
     talkingWebView = new TalkingWebView(
+        this,
         webView, tts, vibrator, powerManager,
         msgs, callback,
         htmlInput, originalLink, baseUrl);
@@ -1083,6 +1085,23 @@ public class ArticleViewActivity extends Activity
   protected void onActivityResult(int requestCode, int resultCode,
                                   Intent data) {
     switch(requestCode) {
+      case REQUEST_CHECK_TTS_DATA:
+        switch (resultCode) {
+          case TextToSpeech.Engine.CHECK_VOICE_DATA_PASS:
+            if (Config.LOGD) Log.d(TAG, "TTS data OK");
+            Core.tts = tts = new TextToSpeech(this, ttsInitListener);
+            break;
+          default: {
+            // Not tested.
+            Intent intent = new Intent();
+            intent.setAction(TextToSpeech.Engine.ACTION_INSTALL_TTS_DATA);
+            startActivity(intent);
+            // Unsure how to reliably handle the return here, so have
+            // the user restart the app.
+            finish();
+          }
+        }
+        break;
       case Core.REQUEST_LOGIN:
         // Dispatch to common handling.
         Core.handleLoginActivityResult(this, resultCode, data);
