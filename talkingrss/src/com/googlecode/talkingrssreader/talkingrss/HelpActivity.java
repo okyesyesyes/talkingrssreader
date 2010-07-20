@@ -188,6 +188,7 @@ public class HelpActivity extends Activity
       };
 
     talkingWebView = new TalkingWebView(
+        this,
         webView, Core.tts, vibrator, powerManager,
         msgs, callback,
         html, "", null);

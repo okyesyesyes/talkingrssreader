@@ -127,6 +127,7 @@ public class TalkingWebView
     public String emptyArticle;
   }
 
+  private Context parentContext;
   private WebView webView;
   private TextToSpeech tts;
   private Vibrator vibrator;
@@ -137,11 +138,13 @@ public class TalkingWebView
   private String htmlFooter;  // Shown but not spoken.
   private String baseUrl;
 
-  public TalkingWebView(WebView webView, TextToSpeech tts,
+  public TalkingWebView(Context parentContext,
+                        WebView webView, TextToSpeech tts,
                         Vibrator vibrator, PowerManager powerManager,
                         SpokenMessages messages,
                         Callback callback,
                         String htmlInput, String htmlFooter, String baseUrl) {
+    this.parentContext = parentContext;
     this.webView = webView;
     this.tts = tts;
     this.vibrator = vibrator;
@@ -153,6 +156,7 @@ public class TalkingWebView
     this.baseUrl = baseUrl;
 
     this.tts.setOnUtteranceCompletedListener(this);
+    registerSpeechStoppedReceiver();
 
     setup();
   }
@@ -180,6 +184,7 @@ public class TalkingWebView
   // Called when we are discarded.
   public void kill() {
     this.tts.setOnUtteranceCompletedListener(null);
+    unregisterSpeechStoppedReceiver();
     stopTalking();
     isDead = true;
     if (htmlParseTask != null) {
@@ -424,7 +429,8 @@ public class TalkingWebView
       speakCompoundUtterance(currentUtterance);
       lastEnqueuedUtterance = currentUtterance;
     }
-    if (currentUtterance+1 < htmlTalker.utterances.size()) {
+    if (continueTalking && currentUtterance+1 < htmlTalker.utterances.size()) {
+      // Pipeline TTS processing to try and minimize delays between sentences.
       speakCompoundUtterance(currentUtterance + 1);
       lastEnqueuedUtterance = currentUtterance + 1;
     }
@@ -495,11 +501,18 @@ public class TalkingWebView
     final int utteranceId = Integer.parseInt(utteranceIdString);
     handler.post(new Runnable() {
         public void run() {
-          if (utteranceId < startCallbackUtteranceId)
+          if (utteranceId <= startCallbackUtteranceId)
             return;  // an older utterance.
           if (!isTalking)
             return;
-          currentUtterance += utteranceId - startCallbackUtteranceId;
+          int spokenUtterances = utteranceId - startCallbackUtteranceId;
+          // Normally, spokenUtterances is 1. speechProgress() will
+          // decide whether to continue speaking, and if so will
+          // increment currentUtterance and forward to the next
+          // utterance.
+          if (spokenUtterances > 1)
+            // In case somehow we missed one.
+            currentUtterance += spokenUtterances - 1;
           if (Config.LOGD) Log.d(TAG, String.format("onUtteranceCompleted: %d -> %d", utteranceId, currentUtterance));
           startCallbackUtteranceId = utteranceId;
           speechProgress();
@@ -596,5 +609,37 @@ public class TalkingWebView
     // Prevent incrementing currentUtterance when done.
     skippingBackwards = true;
     startTalking(continueTalking);
+  }
+
+  // Broadcast receiver for ACTION_TTS_QUEUE_PROCESSING_COMPLETED, to
+  // try and notice when speech is interrupted from outside the app,
+  // such as another activity using or stopping speech (TalkBack's
+  // proximity sensor shutup for instance). Otherwise we wait forever
+  // for speech progress, and the user has to tap play/pause twice to
+  // get us speaking again. I still think interruptions should be
+  // signaled through
+  // onUtteranceCompleted(). ACTION_TTS_QUEUE_PROCESSING_COMPLETED
+  // does fire on interruption, but it also fires on normal completion
+  // and delivery ordering vs onUtteranceCompleted() is not
+  // guaranteed. It appears to work in practice so far.
+  BroadcastReceiver speechStoppedReceiver = new BroadcastReceiver() {
+      @Override
+      public void onReceive(Context context, Intent intent) {
+        if (Config.LOGD) Log.d(TAG, "Speech finished broadcast");
+        if (isTalking) {
+          isTalking = false;
+          callback.onTalking(false);
+          if (Config.LOGD) Log.d(TAG, String.format("Possibly interrupted talking during utterance %d", currentUtterance));
+        }
+      }
+    };
+  void registerSpeechStoppedReceiver() {
+    IntentFilter speechStoppedIntentFilter =
+      new IntentFilter(TextToSpeech.ACTION_TTS_QUEUE_PROCESSING_COMPLETED);
+    speechStoppedIntentFilter.setPriority(101);
+    parentContext.registerReceiver(speechStoppedReceiver, speechStoppedIntentFilter);
+  }
+  void unregisterSpeechStoppedReceiver() {
+    parentContext.unregisterReceiver(speechStoppedReceiver);
   }
 }
